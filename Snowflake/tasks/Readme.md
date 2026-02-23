@@ -1,5 +1,5 @@
 # 🏔️ Snowflake — Cours complet sur les Tasks
-> **Guide débutant · Projet `health_app`** · Optimisé Notion · Réutilisable sur d'autres projets
+> **Guide débutant · Projet `health_app`** · Réutilisable sur d'autres projets
 
 ---
 
