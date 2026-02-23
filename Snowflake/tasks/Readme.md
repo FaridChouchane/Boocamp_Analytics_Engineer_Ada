@@ -1,6 +1,5 @@
-# 🏔️ Snowflake — Cours complet sur les Tasks
-> **Guide débutant · Projet `health_app`** · Réutilisable sur d'autres projets
-
+# ❄️ Snowflake — Cours complet sur les Tasks
+> **Guide débutant · Projet `health_app`** · Optimisé Notion · Réutilisable sur d'autres projets
 ---
 
 ## 📋 Table des matières
@@ -678,7 +677,7 @@ SELECT COUNT(*) FROM raw.raw_events_stream;
 Le **Finalizer** est une task spéciale qui s'exécute **toujours en dernier**, après que **toutes les tasks du DAG ont terminé**, qu'elles aient réussi ou échoué.
 
 ```
-data_quality_task
+identify_new_data_task
         │
         ├── hih_listener_manager  ✅
         ├── step_lsc              ❌ (échec)
@@ -689,31 +688,187 @@ data_quality_task
         [finalize_transformation]  ← s'exécute TOUJOURS
 ```
 
-**Usages typiques du Finalizer :**
-- Envoyer une notification de fin de pipeline (email, Slack…)
-- Nettoyer des tables temporaires
-- Agréger les logs du run
-- Marquer le run comme terminé dans une table de suivi
+**Usages typiques du Finalizer dans ce projet :**
+- Compter les erreurs du run depuis `raw.logging`
+- Enregistrer le statut global (`SUCCEEDED` / `FAILED`) dans `raw.transformation_pipeline_status`
+- Nettoyer la table de staging intermédiaire `raw.data_to_process` si tout s'est bien passé
+- Propager une exception si des erreurs ont été détectées
 
-### Créer un Finalizer
+---
+
+### Code complet — Le Finalizer du projet `health_app`
+
+#### Étape 1 — Suspendre la root task
 
 ```sql
--- Suspendre la root task avant modification
+-- Obligatoire avant toute modification du DAG
 ALTER TASK raw.identify_new_data_task SUSPEND;
+```
 
--- Créer le Finalizer
+#### Étape 2 — Table de suivi du pipeline
+
+```sql
+-- Stocke le statut global de chaque run du DAG
+-- Un enregistrement par run : démarré à, terminé à, statut final
+CREATE OR ALTER TABLE raw.transformation_pipeline_status (
+    graph_run_group_id  STRING,     -- ID unique du run
+    started_at          TIMESTAMP,  -- heure de démarrage (depuis la root task)
+    finished_at         TIMESTAMP,  -- heure de fin (enregistrée par le Finalizer)
+    status              STRING      -- 'SUCCEEDED' ou 'FAILED'
+);
+```
+
+#### Étape 3 — La procédure `finalize_transformation`
+
+```sql
+CREATE OR REPLACE PROCEDURE raw.finalize_transformation(
+    graph_run_group_id  STRING,    -- ID du run, passé depuis la task
+    started_at          TIMESTAMP  -- timestamp de démarrage de la root task
+)
+RETURNS STRING
+LANGUAGE SQL
+EXECUTE AS CALLER
+AS
+$$
+DECLARE
+    -- Exception custom déclenchée si des erreurs sont détectées dans le run
+    pipeline_exception EXCEPTION (-20002, 'Exception in the transformation pipeline');
+
+BEGIN
+    -- Initialise le compteur d'erreurs à 0
+    LET n_errors INT := 0;
+
+    -- Étape A : Compter les erreurs du run courant dans raw.logging
+    -- error_message IS NOT NULL = une task a planté lors de ce run
+    SELECT COUNT(*) INTO n_errors
+    FROM raw.logging
+    WHERE graph_run_group_id = :graph_run_group_id
+      AND error_message IS NOT NULL;
+
+    -- Étape B : Enregistrer le statut global du run dans transformation_pipeline_status
+    -- IFF(condition, valeur_si_vrai, valeur_si_faux)
+    -- → si n_errors > 0 : statut = 'FAILED'
+    -- → sinon           : statut = 'SUCCEEDED'
+    INSERT INTO raw.transformation_pipeline_status (graph_run_group_id, started_at, finished_at, status)
+    SELECT
+        :graph_run_group_id  AS graph_run_group_id,
+        :started_at          AS started_at,
+        CURRENT_TIMESTAMP()  AS finished_at,
+        IFF(:n_errors > 0, 'FAILED', 'SUCCEEDED');
+
+    -- Étape C : Nettoyage conditionnel
+    -- Si aucune erreur → on peut vider la table intermédiaire en toute sécurité
+    -- Si erreurs → on garde les données pour investigation, et on lève une exception
+    IF (n_errors = 0) THEN
+        TRUNCATE TABLE raw.data_to_process;  -- ← nettoyage de la table intermédiaire
+    ELSE
+        RAISE pipeline_exception;            -- ← propage l'erreur → Finalizer marqué FAILED
+    END IF;
+
+END;
+$$;
+```
+
+#### Étape 4 — La task Finalizer
+
+```sql
 CREATE OR ALTER TASK raw.finalize_transformation
     WAREHOUSE = COMPUTE_WH
     FINALIZE  = 'raw.identify_new_data_task'  -- ← lié à la root task du DAG
 AS
-    -- Exemple : log de fin de run, nettoyage, notification
-    -- CALL raw.finalize_transformation();  ← appel de procédure (décommenter quand prêt)
-    SELECT 1;  -- placeholder pendant le développement
+DECLARE
+    -- Récupère l'ID du run courant (partagé par toutes les tasks du DAG)
+    graph_run_group_id STRING    := SYSTEM$TASK_RUNTIME_INFO('CURRENT_TASK_GRAPH_RUN_GROUP_ID');
 
--- Réactiver (enfants ET finalizer avant la root)
-ALTER TASK raw.finalize_transformation     RESUME;
-ALTER TASK raw.identify_new_data_task      RESUME;  -- EN DERNIER
+    -- Récupère le timestamp de démarrage prévu de la root task
+    -- Utile pour calculer la durée totale du run
+    started_at         TIMESTAMP := SYSTEM$TASK_RUNTIME_INFO('CURRENT_TASK_GRAPH_ORIGINAL_SCHEDULED_TIMESTAMP');
+BEGIN
+    CALL raw.finalize_transformation(:graph_run_group_id, :started_at);
+END;
 ```
+
+#### Étape 5 — Activation
+
+```sql
+-- Finalizer d'abord, root task EN DERNIER
+ALTER TASK raw.finalize_transformation   RESUME;
+ALTER TASK raw.identify_new_data_task    RESUME;  -- ← EN DERNIER
+```
+
+#### Étape 6 — Données de test + vérification
+
+```sql
+-- Nettoyer les tables pour repartir à zéro (test propre)
+TRUNCATE TABLE raw.raw_events;
+TRUNCATE TABLE staging.step_lsc;
+
+-- Insérer une ligne de test dans raw_events
+INSERT INTO raw.raw_events (event_timestamp, process_name, process_id, message)
+VALUES ('2018-12-23 22:15:29.606'::TIMESTAMP, 'Step_LSC', 30002312, 'onStandStepChanged 3579');
+
+-- Vérifier l'historique des tasks (dernière heure)
+SELECT *
+FROM TABLE(INFORMATION_SCHEMA.TASK_HISTORY(
+    SCHEDULED_TIME_RANGE_START => DATEADD('hour', -1, current_timestamp())
+))
+WHERE schema_name = 'RAW';
+
+-- Vérifier les logs d'enrichissement
+SELECT *
+FROM raw.logging
+ORDER BY created_at DESC;
+```
+
+---
+
+### Flux complet du Finalizer — visualisé
+
+```
+Toutes les tasks enfants ont terminé
+              │
+              ▼
+  raw.finalize_transformation (task)
+              │
+              ▼
+  raw.finalize_transformation (procédure)
+              │
+              ├─ COUNT erreurs dans raw.logging
+              │         │
+              │    n_errors = 0 ?
+              │         │
+              │    ┌────┴────┐
+              │   OUI       NON
+              │    │         │
+              │    ▼         ▼
+              │  TRUNCATE   RAISE
+              │  data_to_   pipeline_
+              │  process    exception
+              │    │         │
+              └────┴─────────┘
+                    │
+                    ▼
+  raw.transformation_pipeline_status
+  ┌─────────────────────────────────────────────────────┐
+  │ graph_run_group_id │ started_at │ finished_at │ status │
+  │ "abc-123"          │ 10:00:00   │ 10:02:34    │ SUCCEEDED │
+  │ "xyz-456"          │ 11:00:00   │ 11:03:01    │ FAILED    │
+  └─────────────────────────────────────────────────────┘
+```
+
+---
+
+### La fonction `SYSTEM$TASK_RUNTIME_INFO` — les paramètres utiles
+
+| Paramètre | Type retourné | Contient |
+|---|---|---|
+| `'CURRENT_TASK_GRAPH_RUN_GROUP_ID'` | STRING | ID unique du run complet du DAG |
+| `'CURRENT_TASK_GRAPH_ORIGINAL_SCHEDULED_TIMESTAMP'` | TIMESTAMP | Timestamp prévu de démarrage de la root task |
+| `'CURRENT_TASK_NAME'` | STRING | Nom complet de la task en cours d'exécution |
+
+> 💡 `CURRENT_TASK_GRAPH_ORIGINAL_SCHEDULED_TIMESTAMP` est particulièrement utile dans le Finalizer pour calculer la **durée totale du run** : `finished_at - started_at`.
+
+---
 
 ### Différence `AFTER` vs `FINALIZE`
 
@@ -721,33 +876,25 @@ ALTER TASK raw.identify_new_data_task      RESUME;  -- EN DERNIER
 |---|---|
 | S'exécute après UNE task spécifique | S'exécute après TOUTES les tasks du DAG |
 | Ne s'exécute pas si la task parente a échoué | S'exécute TOUJOURS (succès ou échec) |
-| Peut être plusieurs tasks avec le même `AFTER` | Un seul Finalizer par DAG |
+| Plusieurs tasks peuvent avoir le même `AFTER` | Un seul Finalizer par DAG |
 | Task enfant normale | Task spéciale de clôture |
-
-### `SELECT 1` — le placeholder
-
-```sql
--- SELECT 1 = requête minimale qui ne fait rien mais réussit toujours
--- Utile pour "réserver" une task pendant le développement
--- → La task existe, est dans le DAG, mais n'a pas encore de logique réelle
-SELECT 1;
-
--- Plus tard, on remplace par la vraie logique :
--- CALL raw.finalize_transformation();
-```
 
 ### Débugger le Finalizer
 
 ```sql
--- Vérifier que le Finalizer s'exécute bien après les autres
-SELECT name, state, scheduled_time, completed_time
+-- Vérifier que le Finalizer s'est exécuté en dernier
+SELECT name, state, scheduled_time, completed_time, error_message
 FROM TABLE(INFORMATION_SCHEMA.TASK_HISTORY(
     SCHEDULED_TIME_RANGE_START => DATEADD('hour', -1, current_timestamp())
 ))
 WHERE schema_name = 'RAW'
 ORDER BY completed_time DESC;
-
 -- Le Finalizer doit apparaître avec le COMPLETED_TIME le plus tardif
+
+-- Vérifier le statut global enregistré par le Finalizer
+SELECT *
+FROM raw.transformation_pipeline_status
+ORDER BY finished_at DESC;
 ```
 
 ---
@@ -1154,4 +1301,3 @@ SQLERRM       -- message de la dernière erreur (dans EXCEPTION)
 ---
 
 *Documentation générée le 2026-02-23 · Cours Snowflake Tasks · Projet `health_app`*
-
