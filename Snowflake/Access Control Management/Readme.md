@@ -161,6 +161,8 @@ SHOW GRANTS TO USER coursdbt;
 DESCRIBE USER coursdbt;
 ```
 
+* Liste des rôles disponibles dans ❄️ Snowflake : https://docs.snowflake.com/fr/user-guide/security-access-control-privileges
+  
 ### Créer et assigner un rôle de base
 
 ```sql
