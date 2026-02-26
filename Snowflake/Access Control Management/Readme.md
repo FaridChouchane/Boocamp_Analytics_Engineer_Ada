@@ -17,10 +17,11 @@
 7. [Configurer le rôle AppRole](#7-configurer-le-rôle-approle)
 8. [Privilège vs Posséder un objet (Ownership)](#8-privilège-vs-posséder-un-objet-ownership)
 9. [Code SQL complet et documenté](#9-code-sql-complet-et-documenté)
-10. [Cas pratique guidé](#10-cas-pratique-guidé)
-11. [Canevas de réutilisation](#11-canevas-de-réutilisation)
-12. [Référence des privilèges par objet](#12-référence-des-privilèges-par-objet)
-13. [Commandes utiles de diagnostic](#13-commandes-utiles-de-diagnostic)
+10. [Révoquer des privilèges — REVOKE en détail](#10-révoquer-des-privilèges--revoke-en-détail)
+11. [Cas pratique guidé](#11-cas-pratique-guidé)
+12. [Canevas de réutilisation](#12-canevas-de-réutilisation)
+13. [Référence des privilèges par objet](#13-référence-des-privilèges-par-objet)
+14. [Commandes utiles de diagnostic](#14-commandes-utiles-de-diagnostic)
 
 ---
 
@@ -626,7 +627,166 @@ GRANT USAGE ON DATABASE HEALTH_APP_2 TO ROLE app_role;
 
 ---
 
-## 10. Cas pratique guidé
+## 10. Révoquer des privilèges — REVOKE en détail
+
+> Si `GRANT` donne des droits, `REVOKE` les retire. C'est une opération critique pour la sécurité et la gestion du cycle de vie des accès.
+
+### Syntaxe générale
+
+```sql
+-- Révoquer un privilège d'un rôle
+REVOKE <privilege> ON <object_type> <object_name> FROM ROLE <role_name>;
+
+-- Révoquer un rôle d'un utilisateur
+REVOKE ROLE <role_name> FROM USER <user_name>;
+
+-- Révoquer un rôle d'un autre rôle (hiérarchie)
+REVOKE ROLE <role_enfant> FROM ROLE <role_parent>;
+```
+
+> ⚠️ **Qui peut REVOKE ?** Seul un rôle avec `MANAGE GRANTS` (comme `ACCOUNTADMIN` ou `DEV_SEC_OPS_ROLE`) peut révoquer des privilèges sur n'importe quel objet. Sans ce droit, tu ne peux révoquer que les privilèges que tu as toi-même accordés.
+
+---
+
+### Cas 1 : Révoquer un rôle d'un utilisateur
+
+```sql
+-- Un développeur quitte l'équipe → retirer son accès
+REVOKE ROLE dev_ops_role FROM USER alice;
+
+-- Vérification : alice ne doit plus avoir ce rôle
+SHOW GRANTS TO USER alice;
+```
+
+---
+
+### Cas 2 : Révoquer un privilège sur une database ou un schéma
+
+```sql
+-- Retirer l'accès à la database pour un rôle
+REVOKE USAGE ON DATABASE health_app_2 FROM ROLE engineer_role;
+
+-- Retirer tous les droits sur un schéma
+REVOKE ALL ON SCHEMA raw FROM ROLE dev_ops_role;
+
+-- Retirer un droit spécifique sur un schéma
+REVOKE CREATE TASK ON SCHEMA raw FROM ROLE app_role;
+```
+
+---
+
+### Cas 3 : Révoquer des privilèges sur les tables
+
+```sql
+-- Retirer SELECT sur une table précise
+REVOKE SELECT ON TABLE health_app_2.raw.patients FROM ROLE engineer_role;
+
+-- Retirer SELECT sur toutes les tables existantes d'un schéma
+REVOKE SELECT ON ALL TABLES IN SCHEMA raw FROM ROLE engineer_role;
+
+-- Retirer le GRANT sur les futures tables
+-- ⚠️ Attention : ceci n'affecte PAS les droits déjà accordés aux tables existantes !
+REVOKE SELECT ON FUTURE TABLES IN SCHEMA raw FROM ROLE engineer_role;
+```
+
+> 💡 **Piège important** : `REVOKE SELECT ON FUTURE TABLES` n'enlève les droits que sur les tables **créées après** la révocation. Les tables existantes qui avaient reçu le droit le conservent. Pour tout retirer, combine les deux :
+> ```sql
+> REVOKE SELECT ON ALL TABLES IN SCHEMA raw FROM ROLE engineer_role;
+> REVOKE SELECT ON FUTURE TABLES IN SCHEMA raw FROM ROLE engineer_role;
+> ```
+
+---
+
+### Cas 4 : Révoquer des privilèges niveau ACCOUNT
+
+```sql
+-- Retirer le droit de créer des databases
+REVOKE CREATE DATABASE ON ACCOUNT FROM ROLE dev_sec_ops_role;
+
+-- Retirer le droit de gérer les permissions
+REVOKE MANAGE GRANTS ON ACCOUNT FROM ROLE dev_sec_ops_role;
+
+-- Retirer le droit d'exécuter des tasks
+REVOKE EXECUTE TASK ON ACCOUNT FROM ROLE app_role;
+```
+
+> ⚠️ Ces commandes doivent être exécutées depuis `ACCOUNTADMIN` car elles concernent des privilèges au niveau du compte.
+
+---
+
+### Cas 5 : Révoquer WITH GRANT OPTION (CASCADE)
+
+Quand un rôle a reçu un privilège **`WITH GRANT OPTION`** et l'a délégué à d'autres rôles, le comportement de REVOKE peut varier :
+
+```sql
+-- Option RESTRICT (par défaut) : échoue si le droit a été délégué
+REVOKE EXECUTE TASK ON ACCOUNT FROM ROLE dev_sec_ops_role;
+-- ❌ Peut échouer si dev_sec_ops_role a déjà délégué ce droit à app_role
+
+-- Option CASCADE : révoque en cascade sur tous les rôles qui ont reçu ce droit via ce rôle
+REVOKE EXECUTE TASK ON ACCOUNT FROM ROLE dev_sec_ops_role CASCADE;
+-- ✅ Retire aussi le droit d'app_role automatiquement
+```
+
+```mermaid
+graph LR
+    AA[ACCOUNTADMIN] -->|"GRANT EXECUTE TASK WITH GRANT OPTION"| DSO[DEV_SEC_OPS_ROLE]
+    DSO -->|"GRANT EXECUTE TASK"| APP[APP_ROLE]
+
+    REV["REVOKE EXECUTE TASK FROM dev_sec_ops_role CASCADE"] -.->|"révoque aussi"| DSO
+    REV -.->|"révoque en cascade"| APP
+
+    style DSO fill:#4ecdc4,color:#fff
+    style APP fill:#96ceb4,color:#fff
+    style REV fill:#ff7675,color:#fff
+```
+
+---
+
+### Vue d'ensemble : GRANT vs REVOKE
+
+| Action | Commande GRANT | Commande REVOKE équivalente |
+|--------|---------------|----------------------------|
+| Accès à une database | `GRANT USAGE ON DATABASE db TO ROLE r` | `REVOKE USAGE ON DATABASE db FROM ROLE r` |
+| Accès à un schéma | `GRANT USAGE ON SCHEMA s TO ROLE r` | `REVOKE USAGE ON SCHEMA s FROM ROLE r` |
+| Lecture table | `GRANT SELECT ON TABLE t TO ROLE r` | `REVOKE SELECT ON TABLE t FROM ROLE r` |
+| Lecture futures tables | `GRANT SELECT ON FUTURE TABLES IN SCHEMA s TO ROLE r` | `REVOKE SELECT ON FUTURE TABLES IN SCHEMA s FROM ROLE r` |
+| Écriture table | `GRANT INSERT ON TABLE t TO ROLE r` | `REVOKE INSERT ON TABLE t FROM ROLE r` |
+| Créer un objet | `GRANT CREATE TABLE ON SCHEMA s TO ROLE r` | `REVOKE CREATE TABLE ON SCHEMA s FROM ROLE r` |
+| Droit compte | `GRANT CREATE DATABASE ON ACCOUNT TO ROLE r` | `REVOKE CREATE DATABASE ON ACCOUNT FROM ROLE r` |
+| Assigner un rôle | `GRANT ROLE r TO USER u` | `REVOKE ROLE r FROM USER u` |
+
+---
+
+### Bonnes pratiques pour REVOKE
+
+```mermaid
+graph TD
+    BPA["✅ Toujours vérifier AVANT de révoquer"]
+    BPB["✅ Utiliser SHOW GRANTS pour auditer"]
+    BPC["✅ Tester dans un environnement non-prod"]
+    BPD["✅ Penser à CASCADE si WITH GRANT OPTION"]
+    BPE["✅ Documenter chaque REVOKE (qui, quand, pourquoi)"]
+
+    BPA --> V1["SHOW GRANTS TO ROLE <role>;"]
+    BPB --> V2["SHOW GRANTS ON DATABASE <db>;"]
+    BPD --> V3["REVOKE ... FROM ROLE <r> CASCADE;"]
+```
+
+```sql
+-- Avant de révoquer : auditer les droits existants
+SHOW GRANTS TO ROLE engineer_role;
+
+-- Après révocation : vérifier que le droit a bien été retiré
+SHOW GRANTS TO ROLE engineer_role;
+
+-- Vérifier qui a des droits sur un objet précis
+SHOW GRANTS ON TABLE health_app_2.raw.patients;
+```
+
+---
+
+## 11. Cas pratique guidé
 
 > **Scénario** : Tu joins une startup qui crée une app de suivi de dépenses `expense_tracker`. Mets en place le RBAC pour une équipe de 3 personnes : Alice (DevOps), Bob (Engineer), et un service applicatif.
 
@@ -738,7 +898,7 @@ GRANT USAGE ON DATABASE expense_tracker TO ROLE expense_service_role;
 
 ---
 
-## 11. Canevas de réutilisation
+## 12. Canevas de réutilisation
 
 Copie ce template et adapte-le pour n'importe quel nouveau projet Snowflake.
 
@@ -816,7 +976,7 @@ GRANT EXECUTE TASK ON ACCOUNT                    TO ROLE <PROJECT_NAME>_app_role
 
 ---
 
-## 12. Référence des privilèges par objet
+## 13. Référence des privilèges par objet
 
 ### Hiérarchie des objets Snowflake
 
@@ -863,7 +1023,7 @@ graph TD
 
 ---
 
-## 13. Commandes utiles de diagnostic
+## 14. Commandes utiles de diagnostic
 
 ```sql
 -- ============================================================
