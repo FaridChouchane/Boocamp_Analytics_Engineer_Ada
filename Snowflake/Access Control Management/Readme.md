@@ -179,6 +179,7 @@ GRANT ROLE dev_sec_ops_role TO USER coursdbt;
 -- Étape 4 : Donner un premier privilège d'accès à une database
 GRANT USAGE ON DATABASE health_app TO ROLE dev_sec_ops_role;
 ```
+*"coursdbt" > remplacer par l'user actuel*
 
 ### Comprendre les rôles secondaires
 
