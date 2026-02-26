@@ -88,70 +88,107 @@ graph TD
 
 ### Prérequis
 
-```bash
-# Vérifier que Python est bien installé (version 3.8+ requise)
-python3 --version
-# Output attendu : Python 3.10.x ou supérieur
+Avant d'installer Snowflake CLI, on vérifie que Python est bien présent sur la machine.
+Python est nécessaire car Snowflake CLI est un outil écrit en Python.
 
-# Vérifier que pip est disponible
+```bash
+# "python3" = le programme Python version 3
+# "--version" = affiche la version installée et quitte
+# On a besoin d'au moins Python 3.8 pour que Snowflake CLI fonctionne
+python3 --version
+# Résultat attendu dans le terminal : Python 3.10.x (ou plus récent)
+
+# "pip" = le gestionnaire de paquets Python (comme un "app store" pour Python)
+# "--version" = affiche la version de pip installée
+# Si pip n'est pas disponible, installer Python depuis python.org
 pip --version
+# Résultat attendu : pip 23.x.x from /usr/lib/python3/...
 ```
 
 ### Installation
 
 ```bash
-# Installer Snowflake CLI via pip
-# snowflake-cli est le nom du package Python
+# "pip install" = télécharger et installer un paquet Python depuis internet
+# "snowflake-cli" = le nom officiel du paquet Snowflake CLI sur PyPI (le dépôt de paquets Python)
+# Cette commande installe automatiquement toutes les dépendances nécessaires
 pip install snowflake-cli
 
-# Vérifier que l'installation a fonctionné
-# La commande 'snow' doit être disponible
+# Après installation, la commande "snow" devient disponible dans le terminal
+# "snow --help" = afficher toutes les commandes disponibles dans Snowflake CLI
+# C'est comme taper "help" pour voir ce qu'on peut faire avec l'outil
 snow --help
 ```
 
 > 💡 **Note** : Sur certaines machines, il faudra utiliser `pip3` au lieu de `pip`, ou ajouter `--user` si vous n'avez pas les droits admin :
 > ```bash
+> # "pip3" = version explicitement pour Python 3 (utile si pip pointe vers Python 2)
+> # "--user" = installe dans le dossier personnel de l'utilisateur (pas besoin d'admin)
 > pip3 install snowflake-cli --user
 > ```
 
 ### Vérifier la version installée
 
 ```bash
-# Afficher la version de Snowflake CLI installée
+# Affiche le numéro de version de Snowflake CLI installé
+# Utile pour vérifier que l'installation a fonctionné et connaître la version
 snow --version
+# Résultat attendu : Snowflake CLI version: 3.x.x
 
-# Lister toutes les commandes disponibles
+# Affiche toutes les commandes disponibles organisées par catégorie
+# (connection, sql, object, stage, streamlit, etc.)
 snow --help
 ```
 
 ### Structure du projet recommandée
 
-Voici l'arborescence de projet utilisée dans ce cours :
+Voici comment organiser ses fichiers SQL pour travailler proprement avec Snowflake CLI.
+Chaque dossier a un rôle précis :
 
 ```
 cours_snowflake/
-├── sql/
-│   ├── ddl/                    ← Scripts de création d'objets (CREATE)
-│   │   ├── database.sql
-│   │   ├── file_format.sql
-│   │   ├── external_stage.sql
-│   │   └── ...
-│   ├── dml/                    ← Scripts de manipulation de données (INSERT, UPDATE)
-│   └── rbac/                   ← Scripts de droits et rôles
+│
+├── sql/                        ← Tous les fichiers SQL du projet
+│   ├── ddl/                    ← DDL = Data Definition Language
+│   │                              Scripts qui CRÉENT des objets (CREATE TABLE, CREATE VIEW...)
+│   │                              Ces objets définissent la STRUCTURE de la base
+│   │   ├── database.sql        ← Crée la database principale
+│   │   ├── file_format.sql     ← Crée les formats de fichiers CSV/JSON
+│   │   ├── external_stage.sql  ← Crée les stages (connexion vers S3/Azure/GCS)
+│   │   └── raw_tbl.sql         ← Crée les tables de données brutes
+│   │
+│   ├── dml/                    ← DML = Data Manipulation Language
+│   │                              Scripts qui MANIPULENT les données (INSERT, UPDATE, DELETE)
+│   │                              Ces scripts remplissent ou modifient les données
+│   │
+│   └── rbac/                   ← RBAC = Role-Based Access Control
+│                                  Scripts de gestion des droits et rôles (voir Chapitre 4)
 │       ├── dev_sec_ops_role.sql
 │       └── initialisation_application.sql
-├── config.toml                 ← Configuration Snowflake CLI (locale, à ne pas committer)
-├── snowflake_rsa_key.p8        ← Clé privée RSA (⚠️ JAMAIS dans git !)
-└── snowflake_rsa_public.pub    ← Clé publique RSA
+│
+├── config.toml                 ← Fichier de configuration de Snowflake CLI
+│                                  Contient les paramètres de connexion (user, account, clé...)
+│                                  ⚠️ NE JAMAIS mettre dans git (contient des secrets !)
+│
+├── snowflake_rsa_key.p8        ← Clé PRIVÉE RSA pour s'authentifier à Snowflake
+│                                  ⚠️ JAMAIS dans git ! C'est comme un mot de passe.
+│
+└── snowflake_rsa_public.pub    ← Clé PUBLIQUE RSA (peut être partagée, elle est dans Snowflake)
 ```
 
-> ⚠️ **CRITIQUE** : Ajouter `snowflake_rsa_key.p8` et `config.toml` dans votre `.gitignore` ! Ces fichiers contiennent des credentials sensibles.
+> ⚠️ **CRITIQUE — Protéger ses secrets** : Les fichiers `snowflake_rsa_key.p8` et `config.toml` contiennent des informations sensibles. Les ajouter au `.gitignore` pour ne JAMAIS les envoyer sur GitHub par accident.
 
 ```bash
-# Créer/compléter le .gitignore
-echo "snowflake_rsa_key.p8" >> .gitignore
-echo "config.toml" >> .gitignore
+# ".gitignore" = fichier qui dit à git quels fichiers ignorer
+# ">>" = ajouter une ligne à la fin du fichier (sans l'écraser)
+
+# Ignorer tous les fichiers .p8 (clés privées RSA)
 echo "*.p8" >> .gitignore
+
+# Ignorer le fichier de config Snowflake CLI (contient le chemin vers la clé privée)
+echo "config.toml" >> .gitignore
+
+# Vérifier que le .gitignore a bien été mis à jour
+cat .gitignore
 ```
 
 ---
@@ -160,7 +197,8 @@ echo "*.p8" >> .gitignore
 
 ### Concept : l'utilisateur de déploiement
 
-Dans une architecture CI/CD, on ne se connecte **jamais** avec un compte utilisateur personnel. On crée un compte technique dédié, de type `SERVICE`.
+Dans une architecture CI/CD, on ne se connecte **jamais** avec un compte utilisateur personnel.
+On crée un compte technique dédié, de type `SERVICE`.
 
 ```mermaid
 graph LR
@@ -191,28 +229,51 @@ graph LR
 
 ```sql
 -- ============================================================
--- ÉTAPE 1 : Créer l'utilisateur de service
--- ============================================================
--- TYPE=SERVICE : cet utilisateur ne peut pas se connecter via l'UI Snowflake
--- Il est réservé aux connexions programmatiques (CLI, API, pipelines)
--- CREATE OR REPLACE : idempotent (ne plante pas si l'user existe déjà)
+-- On commence toujours par se mettre dans le bon rôle
+-- avant de faire des opérations d'administration
 -- ============================================================
 
+-- "USE ROLE" = changer de rôle actif pour cette session
+-- "accountadmin" = le rôle le plus puissant de Snowflake,
+--  le seul qui peut créer des utilisateurs et gérer le compte
 USE ROLE accountadmin;
 
-CREATE OR REPLACE USER deployment_user TYPE=SERVICE;
 
 -- ============================================================
--- ÉTAPE 2 : Vérifier que l'utilisateur a bien été créé
--- ============================================================
--- DESC USER montre toutes les propriétés de l'utilisateur
--- Vérifier : TYPE = SERVICE, RSA_PUBLIC_KEY (sera rempli à l'étape suivante)
+-- Création de l'utilisateur de service
 -- ============================================================
 
+-- "CREATE OR REPLACE USER" = créer l'utilisateur
+--   → Si l'utilisateur n'existe pas encore : le créer
+--   → Si l'utilisateur existe déjà : le recréer proprement (sans erreur)
+--   C'est ce qu'on appelle une commande "idempotente" : peut être rejouée sans problème
+
+-- "deployment_user" = le nom qu'on choisit pour cet utilisateur technique
+--   C'est le nom qui apparaîtra dans les logs de connexion Snowflake
+
+-- "TYPE=SERVICE" = type spécial pour les comptes non-humains (robots, pipelines CI/CD)
+--   Un utilisateur SERVICE :
+--   - Ne peut PAS se connecter via l'interface web Snowflake
+--   - N'a pas besoin de mot de passe
+--   - S'authentifie uniquement par clé RSA ou token
+--   - Apparaît différemment dans les audits de sécurité
+CREATE OR REPLACE USER deployment_user TYPE = SERVICE;
+
+
+-- ============================================================
+-- Vérification après création
+-- ============================================================
+
+-- "DESC USER" = afficher toutes les propriétés d'un utilisateur
+-- DESC est l'abréviation de DESCRIBE
+-- Cette commande affiche un tableau avec toutes les colonnes :
+--   NAME          → le nom de l'utilisateur (DEPLOYMENT_USER)
+--   TYPE          → doit afficher SERVICE (confirmation de notre TYPE=SERVICE)
+--   RSA_PUBLIC_KEY → vide pour l'instant (sera rempli à la section 4)
+--   DISABLED      → false (l'utilisateur est actif)
+-- Et bien d'autres propriétés...
 DESC USER deployment_user;
 ```
-
-> 💡 **Note sur `CREATE OR REPLACE`** : Cette syntaxe est idempotente pour les utilisateurs — si l'utilisateur existe déjà, il sera recréé (et ses droits seront conservés si l'objet n'est pas supprimé). C'est la commande à préférer dans les scripts de déploiement.
 
 ---
 
@@ -224,103 +285,175 @@ Un mot de passe peut être partagé, volé, ou exposé dans des logs. Une **pair
 
 ```mermaid
 graph LR
-    subgraph "🔐 Votre machine (secret)"
+    subgraph "🔐 Votre machine (secret absolu)"
         PRI[🔑 Clé PRIVÉE<br/>snowflake_rsa_key.p8<br/>Ne sort JAMAIS de la machine]
     end
 
-    subgraph "☁️ Snowflake (public)"
-        PUB[🔓 Clé PUBLIQUE<br/>Stockée dans Snowflake<br/>Peut être partagée]
+    subgraph "☁️ Snowflake (peut être public)"
+        PUB[🔓 Clé PUBLIQUE<br/>Stockée dans Snowflake<br/>Peut être vue par tout le monde]
     end
 
-    PRI -->|"Signe la connexion JWT"| AUTH[🛡️ Authentification]
+    PRI -->|"Signe la connexion (JWT)"| AUTH[🛡️ Authentification]
     PUB -->|"Vérifie la signature"| AUTH
-    AUTH -->|✅ OK| SF[❄️ Snowflake]
+    AUTH -->|✅ Les deux correspondent → connexion autorisée| SF[❄️ Snowflake]
 ```
 
-- La **clé privée** reste sur votre machine (ou dans les secrets du CI/CD)
-- La **clé publique** est déposée dans Snowflake
-- La connexion utilise le protocole **JWT** (JSON Web Token)
+**Analogie simple** : c'est comme un cadenas et une clé.
+- La **clé publique** = le cadenas (tu peux le montrer à tout le monde, le déposer partout)
+- La **clé privée** = la clé du cadenas (seul toi la possèdes, elle ne quitte jamais ta machine)
+- Snowflake garde le cadenas. Toi tu gardes la clé. Seul quelqu'un avec la clé peut ouvrir le cadenas.
 
 ### Générer la clé privée (format PKCS8)
 
+La commande suivante peut faire peur car elle est longue, mais chaque partie a un rôle précis.
+
 ```bash
-# Générer une clé RSA 2048 bits en format PKCS8 (format requis par Snowflake)
-# Décryptage de la commande :
-#   openssl genrsa 2048     → génère une clé RSA de 2048 bits
-#   | openssl pkcs8         → convertit au format PKCS8 (standard Snowflake)
-#   -topk8                  → conversion vers PKCS8
-#   -inform PEM             → format d'entrée : PEM
-#   -out snowflake_rsa_key.p8   → fichier de sortie : la clé privée
-#   -nocrypt                → clé NON chiffrée (plus simple pour CI/CD)
+# Cette commande fait DEUX choses en une grâce au symbole "|" (pipe) :
+#   1. openssl genrsa 2048      → génère une clé RSA brute
+#   2. openssl pkcs8 ...        → convertit cette clé au bon format pour Snowflake
+#
+# Le "|" (pipe) = "prend le résultat de la commande à gauche
+#                  et l'envoie en entrée à la commande à droite"
+#
+# Détail de chaque option :
+#
+#   openssl         → l'outil de cryptographie OpenSSL (standard industrie)
+#   genrsa          → sous-commande : "generate RSA key" (générer une clé RSA)
+#   2048            → taille de la clé en bits (2048 = standard sécurisé)
+#                     Plus c'est grand, plus c'est sécurisé (mais plus lent)
+#
+#   |               → pipe : envoyer le résultat à la commande suivante
+#
+#   openssl         → même outil, deuxième utilisation
+#   pkcs8           → sous-commande : convertir au format PKCS8
+#                     (PKCS8 = standard de format de clé privée, requis par Snowflake)
+#   -topk8          → "to PKCS8" = conversion vers le format PKCS8
+#   -inform PEM     → "input format PEM" = le format d'entrée est PEM
+#                     (PEM = format texte en base64, standard pour les clés)
+#   -out snowflake_rsa_key.p8
+#                   → fichier de sortie : où sauvegarder la clé privée
+#                     ".p8" = extension conventionnelle pour les clés PKCS8
+#   -nocrypt        → "no encryption" = ne pas chiffrer la clé avec un mot de passe
+#                     Avantage : plus simple pour le CI/CD (pas besoin de taper un mdp)
+#                     Inconvénient : si quelqu'un vole le fichier, il a accès direct
+#                     → C'est pour ça qu'on protège ce fichier avec chmod 600 ensuite
+
 openssl genrsa 2048 | openssl pkcs8 -topk8 -inform PEM -out snowflake_rsa_key.p8 -nocrypt
+
+# Si la commande réussit : aucun message d'erreur, et le fichier snowflake_rsa_key.p8 est créé
+# Pour vérifier que le fichier existe :
+ls -la snowflake_rsa_key.p8
 ```
 
-> ⚠️ **Option `-nocrypt`** : La clé est stockée sans passphrase. C'est pratique pour le CI/CD mais implique que le fichier doit être protégé par les permissions système. En production, on peut omettre `-nocrypt` pour chiffrer la clé avec une passphrase, mais il faudra alors la fournir lors de chaque connexion.
+> ⚠️ **Alternative avec clé chiffrée (production recommandée)** : En supprimant `-nocrypt`, OpenSSL demandera de choisir un mot de passe pour chiffrer la clé. Plus sécurisé, mais il faudra fournir ce mot de passe à chaque connexion.
+> ```bash
+> # Version AVEC mot de passe (plus sécurisé)
+> # OpenSSL demandera de saisir et confirmer un mot de passe
+> openssl genrsa 2048 | openssl pkcs8 -topk8 -v2 des3 -inform PEM -out rsa_key.p8
+> # "-v2 des3" = utiliser l'algorithme de chiffrement DES3 pour protéger la clé privée
+> ```
+
+### Générer la clé publique à partir de la clé privée
 
 ```bash
-# Version avec clé CHIFFRÉE (demande une passphrase à la génération) :
-openssl genrsa 2048 | openssl pkcs8 -topk8 -v2 des3 -inform PEM -out rsa_key.p8
-```
+# Cette commande lit la clé PRIVÉE et en extrait la partie PUBLIQUE
+#
+# Détail de chaque option :
+#
+#   openssl         → l'outil OpenSSL
+#   rsa             → sous-commande pour travailler avec des clés RSA
+#   -in snowflake_rsa_key.p8
+#                   → "input" = fichier d'entrée : notre clé PRIVÉE générée juste avant
+#   -pubout         → "public output" = extraire UNIQUEMENT la partie publique
+#                     Sans cette option, openssl sortirait la clé privée complète
+#   -out snowflake_rsa_public.pub
+#                   → fichier de sortie : où sauvegarder la clé PUBLIQUE
+#                     ".pub" = extension conventionnelle pour les clés publiques
 
-### Générer la clé publique
-
-```bash
-# Dériver la clé publique à partir de la clé privée
-# Décryptage de la commande :
-#   openssl rsa             → commande RSA d'OpenSSL
-#   -in snowflake_rsa_key.p8    → prend la clé privée en entrée
-#   -pubout                 → extrait la partie publique seulement
-#   -out snowflake_rsa_public.pub   → fichier de sortie : la clé publique
 openssl rsa -in snowflake_rsa_key.p8 -pubout -out snowflake_rsa_public.pub
 
-# Résultat attendu dans le terminal :
-# writing RSA key
+# Résultat attendu dans le terminal : "writing RSA key"
+# Ce message confirme que la clé publique a bien été extraite et sauvegardée
 ```
 
 ### Protéger les fichiers de clés
 
 ```bash
-# Restreindre les permissions du fichier de clé privée (lecture seul par le propriétaire)
-# 600 = rw------- (lecture + écriture pour le propriétaire, rien pour les autres)
+# "chmod" = "change mode" = modifier les permissions d'un fichier
+# "600" = code octal de permissions Unix :
+#   6 = lecture + écriture pour le PROPRIÉTAIRE du fichier (toi)
+#   0 = aucune permission pour le GROUPE
+#   0 = aucune permission pour les AUTRES utilisateurs
+# Résultat : seul toi peux lire/modifier ce fichier → la clé privée est protégée
 chmod 600 snowflake_rsa_key.p8
 
-# Vérifier les permissions
+# "ls" = lister les fichiers
+# "-la" = "-l" (format long avec les permissions) + "-a" (afficher les fichiers cachés)
+# Vérifier que les permissions sont bien "-rw-------"
+# "-rw-------" se lit :
+#   - = c'est un fichier (pas un dossier)
+#   rw = le propriétaire peut lire (r) et écrire (w)
+#   --- = le groupe n'a aucun droit
+#   --- = les autres n'ont aucun droit
 ls -la snowflake_rsa_key.p8
-# -rw------- 1 user group 1704 Oct 12 14:23 snowflake_rsa_key.p8
+# Résultat attendu : -rw------- 1 tonnom tongroupe 1704 Oct 12 14:23 snowflake_rsa_key.p8
 ```
 
 ### Assigner la clé publique à l'utilisateur Snowflake
 
-```sql
--- ============================================================
--- LIRE LA CLÉ PUBLIQUE
--- ============================================================
--- La clé publique a un format PEM :
--- -----BEGIN PUBLIC KEY-----
--- MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAzKZ/Fp1uZiDT4K3wRqgE
--- ... (contenu en base64)
--- -----END PUBLIC KEY-----
---
--- Pour Snowflake, il faut UNIQUEMENT le contenu base64 (sans les lignes BEGIN/END)
--- ============================================================
-
--- Assigner la clé publique à l'utilisateur
--- RSA_PUBLIC_KEY = contenu base64 de la clé publique SANS les lignes BEGIN/END
--- Copier le contenu entre "-----BEGIN PUBLIC KEY-----" et "-----END PUBLIC KEY-----"
-ALTER USER deployment_user SET RSA_PUBLIC_KEY = 'MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAzKZ/...votreClePublique...IDAQAB';
-
--- Vérification : la colonne RSA_PUBLIC_KEY doit maintenant avoir une valeur
-DESC USER deployment_user;
--- Chercher la ligne RSA_PUBLIC_KEY : doit contenir votre clé
--- Chercher la ligne RSA_PUBLIC_KEY_FP : fingerprint de la clé (ex: SHA256:...)
+La clé publique a ce format quand on ouvre le fichier `snowflake_rsa_public.pub` :
+```
+-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAzKZ/Fp1uZi...
+... plusieurs lignes de caractères en base64 ...
+xwIDAQAB
+-----END PUBLIC KEY-----
 ```
 
-> ⚠️ **Piège fréquent** : Ne pas inclure les lignes `-----BEGIN PUBLIC KEY-----` et `-----END PUBLIC KEY-----` dans la valeur SQL. Copier uniquement le contenu entre ces deux lignes, sans sauts de ligne.
+Pour Snowflake, on ne copie **que le contenu** entre les deux lignes BEGIN/END, **sans les lignes de séparation elles-mêmes**.
 
 ```bash
-# Commande pratique pour extraire uniquement le contenu base64 (sans les headers)
+# Commande pratique pour extraire UNIQUEMENT le contenu base64 (sans les headers BEGIN/END)
+#
+# "grep -v" = afficher toutes les lignes SAUF celles qui contiennent le pattern
+# "BEGIN\|END" = le pattern : les lignes contenant "BEGIN" ou "END"
+# "|" = pipe : envoyer le résultat à la commande suivante
+# "tr -d '\n'" = "translate - delete newlines" = supprimer tous les sauts de ligne
+#
+# Résultat : une seule longue ligne de base64, prête à coller dans le SQL
 grep -v "BEGIN\|END" snowflake_rsa_public.pub | tr -d '\n'
 ```
+
+```sql
+-- ============================================================
+-- Assigner la clé publique RSA à l'utilisateur dans Snowflake
+-- ============================================================
+
+-- "ALTER USER" = modifier les propriétés d'un utilisateur existant
+-- "deployment_user" = l'utilisateur qu'on a créé à la section 3
+-- "SET RSA_PUBLIC_KEY" = définir (ou remplacer) la clé publique RSA de cet utilisateur
+-- La valeur entre quotes = le contenu base64 de la clé publique
+--   ⚠️ SANS les lignes "-----BEGIN PUBLIC KEY-----" et "-----END PUBLIC KEY-----"
+--   ⚠️ Tout sur UNE SEULE ligne (pas de sauts de ligne dans la valeur SQL)
+--   ⚠️ Remplacer par VOTRE clé publique générée avec openssl
+
+ALTER USER deployment_user SET RSA_PUBLIC_KEY = 'MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAzKZ/...VotreClePublique...IDAQAB';
+
+
+-- ============================================================
+-- Vérification : la clé a-t-elle bien été enregistrée ?
+-- ============================================================
+
+-- "DESC USER" = afficher toutes les propriétés de l'utilisateur
+-- Dans le résultat, chercher ces deux lignes importantes :
+--   RSA_PUBLIC_KEY     → doit maintenant afficher le début de votre clé (MIIBIjAN...)
+--   RSA_PUBLIC_KEY_FP  → "fingerprint" = une signature courte de la clé
+--                        Format : SHA256:xxxxxxxxxxxx=
+--                        Utile pour vérifier que c'est bien la bonne clé sans afficher toute la clé
+DESC USER deployment_user;
+```
+
+> ⚠️ **Erreur fréquente** : Si vous copiez les lignes `-----BEGIN PUBLIC KEY-----` dans la valeur SQL, Snowflake retournera une erreur. Ne copier **que** le contenu base64 entre ces deux lignes.
 
 ---
 
@@ -328,204 +461,334 @@ grep -v "BEGIN\|END" snowflake_rsa_public.pub | tr -d '\n'
 
 ### Vue d'ensemble de la configuration
 
-Snowflake CLI utilise un fichier de configuration `config.toml` (format [TOML](https://toml.io/)).
+Snowflake CLI utilise un fichier de configuration `config.toml`.
+Le format TOML (Tom's Obvious Minimal Language) est un format de fichier de configuration lisible par les humains, organisé en sections entre crochets `[section]`.
 
 ```mermaid
 graph TD
-    SNOW["snow connection add"] -->|génère| TOML["config.toml<br/>(~/.snowflake/ ou ./config.toml)"]
+    SNOW["snow connection add"] -->|génère automatiquement| TOML["config.toml<br/>(~/.snowflake/ ou ./config.toml)"]
     TOML --> CONN["[connections.default]<br/>account = ...<br/>user = ...<br/>authenticator = SNOWFLAKE_JWT<br/>private_key_file = ..."]
-    CONN -->|"snow connection test"| TEST[✅ Connexion OK]
+    CONN -->|"snow connection test"| TEST[✅ Connexion OK ou ❌ Erreur détaillée]
 ```
 
 ### Trouver l'identifiant de votre compte Snowflake
 
 Avant de configurer la CLI, vous avez besoin de l'identifiant de votre compte Snowflake.
 
-Dans l'UI Snowflake : cliquer sur votre profil (en bas à gauche) → Nom du compte → "View account details"
+Dans l'UI Snowflake : cliquer sur votre **profil (en bas à gauche)** → cliquer sur le **nom du compte** → "View account details"
 
 ```
-Account identifier :  JCHLZDA-UCB30964
-Account locator    :  ONB31943
+Account identifier :  JCHLZDA-UCB30964      ← format long (org-account)
+Account locator    :  ONB31943              ← format court ← C'EST CELUI-CI qu'on utilise pour la CLI
 Account/Server URL :  JCHLZDA-UCB30964.snowflakecomputing.com
 ```
 
-> 💡 **Quelle valeur utiliser ?** Pour la CLI Snowflake, utilisez le **Account locator** (format court, ex: `ONB31943`).
+> 💡 **Quelle valeur utiliser ?** Pour la CLI Snowflake, utiliser le **Account locator** (format court, ex: `ONB31943`).
 
-### Méthode 1 : Configuration interactive (pour usage local)
+### Méthode 1 : Configuration interactive (pour usage local, la plus simple)
 
 ```bash
-# Lancer l'assistant de configuration interactif
+# "snow connection add" = ajouter une nouvelle connexion à Snowflake dans la CLI
+# En mode interactif, l'outil pose des questions une par une
+# Il suffit de répondre à chacune et d'appuyer sur Entrée
+# (laisser vide = appuyer sur Entrée sans rien taper = valeur par défaut)
+
 snow connection add
 
-# L'outil va demander les informations une par une :
-# Enter connection name: default              ← nom de la connexion (peut en avoir plusieurs)
-# Enter account: ONB31943                    ← Account locator Snowflake
-# Enter user: deployment_user                ← L'utilisateur SERVICE créé précédemment
-# Enter password: (laisser vide)             ← Pas de password, on utilise JWT
-# Enter role: (laisser vide pour l'instant)  ← On configurera le rôle plus tard
-# Enter warehouse: (laisser vide)
-# Enter database: (laisser vide)
-# Enter schema: (laisser vide)
-# Enter host: (laisser vide)
-# Enter port: (laisser vide)
-# Enter region: (laisser vide)
-# Enter authenticator: SNOWFLAKE_JWT         ← Méthode d'auth : JWT avec clé RSA
-# Enter workload identity provider: (laisser vide)
-# Enter private key file: /chemin/vers/snowflake_rsa_key.p8  ← Chemin ABSOLU vers la clé privée
-# Enter token file path: (laisser vide)
+# L'outil va poser ces questions dans l'ordre :
+
+# Enter connection name: default
+#   → Le nom de cette connexion (comme un surnom)
+#   → "default" = connexion utilisée quand on ne précise pas de connexion
+#   → On peut avoir plusieurs connexions : "dev", "prod", "staging"...
+
+# Enter account: ONB31943
+#   → L'Account locator de votre compte Snowflake (trouvé à l'étape précédente)
+#   → Format court, sans ".snowflakecomputing.com"
+
+# Enter user: deployment_user
+#   → Le nom de l'utilisateur SERVICE créé à la section 3
+
+# Enter password: (appuyer sur Entrée sans rien taper)
+#   → On n'utilise PAS de mot de passe, on utilise une clé RSA
+#   → Laisser vide
+
+# Enter role: (appuyer sur Entrée sans rien taper)
+#   → On configurera le rôle plus tard (section 6)
+#   → Laisser vide pour l'instant
+
+# Enter warehouse: (appuyer sur Entrée sans rien taper)
+# Enter database: (appuyer sur Entrée sans rien taper)
+# Enter schema: (appuyer sur Entrée sans rien taper)
+# Enter host: (appuyer sur Entrée sans rien taper)
+# Enter port: (appuyer sur Entrée sans rien taper)
+# Enter region: (appuyer sur Entrée sans rien taper)
+#   → Tout laisser vide, pas nécessaire pour ce cours
+
+# Enter authenticator: SNOWFLAKE_JWT
+#   → Le TYPE d'authentification qu'on utilise
+#   → "SNOWFLAKE_JWT" = authentification par clé RSA (JWT = JSON Web Token)
+#   → C'est ce qui permet de se connecter SANS mot de passe
+#   → ⚠️ Taper exactement "SNOWFLAKE_JWT" (en majuscules)
+
+# Enter workload identity provider: (appuyer sur Entrée sans rien taper)
+#   → Laisser vide
+
+# Enter private key file: /chemin/complet/vers/snowflake_rsa_key.p8
+#   → Le chemin ABSOLU vers votre fichier de clé privée
+#   → Exemple sur Mac : /Users/tonnom/projets/cours_snowflake/snowflake_rsa_key.p8
+#   → Exemple sur Linux : /home/tonnom/cours_snowflake/snowflake_rsa_key.p8
+#   → Pour trouver le chemin absolu : dans le terminal, taper "pwd" dans le dossier du projet
+
+# Enter token file path: (appuyer sur Entrée sans rien taper)
+#   → Laisser vide
 ```
 
-### Méthode 2 : Configuration via script (pour CI/CD, non-interactif)
+### Méthode 2 : Configuration via script (recommandée pour CI/CD, tout en une ligne)
+
+Cette méthode évite les questions interactives. Parfaite pour automatiser la configuration.
 
 ```bash
-# Configuration sans mode interactif (parfaite pour les pipelines GitHub Actions)
-# Décryptage des options :
-#   --config-file ./config.toml    → écrire la config dans ./config.toml (et non dans ~/.snowflake/)
-#   connection add                 → sous-commande pour ajouter une connexion
-#   --connection-name default      → nom de la connexion
-#   --user deployment_user         → utilisateur Snowflake
-#   --authenticator SNOWFLAKE_JWT  → authentification par clé RSA (JSON Web Token)
-#   --private-key ./snowflake_rsa_key.p8   → chemin relatif vers la clé privée
-#   --account ONB31943             → identifiant du compte Snowflake
-#   --no-interactive               → ne pas demander de confirmation
+# Cette commande fait exactement la même chose que la méthode interactive,
+# mais tout est précisé en une seule commande (pas de questions/réponses)
+#
+# Le "\" en fin de ligne = continuation de la commande à la ligne suivante
+# C'est juste pour la lisibilité, la commande est en réalité sur une seule ligne
+#
+# Décryptage de chaque option :
 
-snow --config-file ./config.toml connection add \
+snow \
+  --config-file ./config.toml \
+  # "--config-file" = quel fichier de config utiliser et où le créer
+  # "./config.toml" = dans le dossier COURANT (là où on tape la commande)
+  # Si on ne le précise pas, snow utilise ~/.snowflake/config.toml (dossier global)
+  # Utiliser un config.toml LOCAL au projet est une bonne pratique
+
+  connection add \
+  # "connection add" = ajouter une connexion
+
   --connection-name default \
+  # "--connection-name" = nom de cette connexion (comme un label)
+  # "default" = connexion utilisée par défaut quand on ne précise rien
+
   --user deployment_user \
+  # "--user" = nom de l'utilisateur Snowflake qui se connecte
+
   --authenticator SNOWFLAKE_JWT \
+  # "--authenticator" = méthode d'authentification
+  # "SNOWFLAKE_JWT" = utiliser une clé RSA (JWT = JSON Web Token)
+  # C'est le standard pour les connexions programmatiques sécurisées
+
   --private-key ./snowflake_rsa_key.p8 \
+  # "--private-key" = chemin vers le fichier de clé PRIVÉE RSA
+  # "./" = dans le dossier courant
+  # En production/CI-CD on utilisera un chemin absolu ou une variable d'environnement
+
   --account ONB31943 \
+  # "--account" = l'Account locator de votre compte Snowflake
+  # Remplacer ONB31943 par VOTRE account locator (trouvé dans l'UI Snowflake)
+
   --no-interactive
+  # "--no-interactive" = ne pas poser de questions, utiliser les valeurs par défaut pour tout le reste
+  # Indispensable pour les pipelines CI/CD qui tournent de façon automatique
 ```
 
-> ⚠️ **Erreur commune** : si vous avez l'erreur `Invalid value for '--config-file': File './config.toml' does not exist`, il faut créer le fichier vide d'abord :
+> ⚠️ **Erreur `File './config.toml' does not exist`** : snow a besoin que le fichier existe déjà avant de pouvoir y écrire. Créer le fichier vide d'abord :
 > ```bash
+> # "touch" = créer un fichier vide (ou mettre à jour sa date si il existe déjà)
 > touch config.toml
 > ```
 
-### Le fichier config.toml généré
+### Le fichier config.toml généré — ligne par ligne
+
+Après avoir lancé `snow connection add`, le fichier `config.toml` ressemblera à ceci.
+Voici une explication de chaque ligne :
 
 ```toml
 # ============================================================
-# Fichier de configuration Snowflake CLI
-# Emplacement : ~/.snowflake/config.toml (global)
-#            ou ./config.toml (local au projet)
+# SECTION [cli] : paramètres généraux de Snowflake CLI
 # ============================================================
-
 [cli]
+# "ignore_new_version_warning" : afficher ou non les messages "une nouvelle version est disponible"
+# "false" = afficher le warning (conseillé pour rester à jour)
+# "true" = masquer le warning (utile dans les pipelines CI/CD pour des logs plus propres)
 ignore_new_version_warning = false
 
+# ============================================================
+# SECTION [cli.logs] : paramètres de journalisation (logs)
+# ============================================================
 [cli.logs]
+# "save_logs" = sauvegarder les logs dans un fichier (true) ou non (false)
 save_logs = true
+
+# "path" = où sauvegarder les fichiers de log
+# Utile pour débugger en cas de problème de connexion
 path = "/Users/user/Library/Application Support/snowflake/logs"
+
+# "level" = niveau de détail des logs
+# "info" = logs informatifs (standard)
+# Autres valeurs possibles : "debug" (très verbeux), "warning", "error"
 level = "info"
 
-# Connexion nommée "default"
-# Il peut y en avoir plusieurs : [connections.dev], [connections.prod], etc.
+# ============================================================
+# SECTION [connections.default] : paramètres de connexion
+# "default" est le NOM de cette connexion
+# On peut avoir plusieurs connexions : [connections.dev], [connections.prod]...
+# ============================================================
 [connections.default]
-account = "ONB31943"                                   # Account locator Snowflake
-user = "deployment_user"                               # Utilisateur SERVICE
-authenticator = "SNOWFLAKE_JWT"                        # Méthode d'auth : clé RSA
-private_key_file = "./snowflake_rsa_key.p8"           # Chemin vers la clé privée
-# role = "dev_sec_ops_role"                            # Optionnel : rôle par défaut
+
+# "account" = l'Account locator de votre compte Snowflake
+# C'est l'identifiant court (ex: ONB31943), pas l'URL complète
+account = "ONB31943"
+
+# "user" = le nom de l'utilisateur Snowflake qui se connecte
+# C'est l'utilisateur SERVICE créé à la section 3
+user = "deployment_user"
+
+# "authenticator" = méthode d'authentification utilisée pour se connecter
+# "SNOWFLAKE_JWT" = authentification par clé RSA (JSON Web Token)
+# Cette méthode ne nécessite pas de mot de passe
+authenticator = "SNOWFLAKE_JWT"
+
+# "private_key_file" = chemin vers le fichier de clé PRIVÉE RSA
+# C'est ce fichier qui prouve l'identité lors de la connexion
+# ⚠️ Ce chemin doit pointer vers un fichier .p8 qui EXISTE sur votre machine
+private_key_file = "./snowflake_rsa_key.p8"
+
+# "role" = le rôle Snowflake à utiliser par défaut pour cette connexion
+# Décommenter et remplir après avoir assigné le rôle (section 6)
+# role = "dev_sec_ops_role"
 ```
 
 ### Tester la connexion
 
 ```bash
-# Tester que la connexion fonctionne correctement
+# "snow connection test" = tenter une connexion réelle à Snowflake et afficher le résultat
+# Snow va utiliser la connexion "default" du config.toml par défaut
 snow connection test
 
-# Résultat attendu :
+# Si vous avez un config.toml LOCAL (pas dans ~/.snowflake/) :
+# "--config-file" = préciser quel fichier de config utiliser
+snow --config-file ./config.toml connection test
+
+# ✅ Résultat si tout fonctionne :
 # +--------------------+-----------------------------------------------+
 # | key                | value                                         |
 # |--------------------|-----------------------------------------------|
-# | Connection name    | default                                       |
-# | Status             | OK                                            |
+# | Connection name    | default           ← nom de la connexion       |
+# | Status             | OK                ← ✅ connexion réussie      |
 # | Host               | ONB31943.snowflakecomputing.com               |
-# | Account            | ONB31943                                      |
-# | User               | deployment_user                               |
-# | Role               | PUBLIC                                        |
-# | Database           | not set                                       |
-# | Warehouse          | not set                                       |
+# | Account            | ONB31943          ← votre account locator     |
+# | User               | deployment_user   ← l'utilisateur connecté    |
+# | Role               | PUBLIC            ← rôle actif (pour l'instant PUBLIC)
+# | Database           | not set           ← pas de database par défaut
+# | Warehouse          | not set           ← pas de warehouse par défaut
 # +--------------------+-----------------------------------------------+
-
-# Si vous utilisez un config.toml local (non global) :
-snow --config-file ./config.toml connection test
 ```
 
-> ⚠️ **Avertissement courant** : `UserWarning: Bad owner or permissions on config.toml`
-> Ce warning indique que les permissions du fichier sont trop ouvertes. Pour le corriger :
+> ⚠️ **Warning courant** : `UserWarning: Bad owner or permissions on config.toml`
+> Ce message signifie que le fichier config.toml est lisible par d'autres utilisateurs du système.
+> Ce n'est pas bloquant, mais c'est un risque de sécurité. Pour corriger :
 > ```bash
-> chown $USER "config.toml"    # changer le propriétaire
-> chmod 0600 "config.toml"     # lecture/écriture uniquement par le propriétaire
+> # "chown $USER" = changer le propriétaire du fichier pour l'utilisateur courant
+> # "$USER" = variable d'environnement = votre nom d'utilisateur système
+> chown $USER "config.toml"
+>
+> # "chmod 0600" = permissions : lecture+écriture pour le propriétaire seulement
+> # 0 = aucun droit pour le groupe et les autres
+> chmod 0600 "config.toml"
 > ```
 
 ---
 
 ## 6. Assigner un rôle par défaut à la connexion
 
-### Pourquoi le rôle par défaut est `PUBLIC`
+### Pourquoi le rôle actuel est `PUBLIC` ?
 
-Par défaut, `deployment_user` se connecte avec le rôle `PUBLIC` — qui n'a pratiquement aucun droit. Il faut :
-1. Assigner le rôle `dev_sec_ops_role` à `deployment_user` dans Snowflake
-2. Configurer ce rôle comme rôle par défaut dans `config.toml`
+Quand `deployment_user` se connecte, il utilise automatiquement le rôle `PUBLIC`.
+`PUBLIC` est le rôle par défaut de Snowflake assigné à tous les utilisateurs — il n'a pratiquement aucun droit.
+
+Il faut faire deux choses :
+1. Dans **Snowflake** → assigner le rôle `dev_sec_ops_role` à `deployment_user`
+2. Dans **config.toml** → dire à la CLI d'utiliser ce rôle par défaut
 
 ```mermaid
 graph LR
-    DU[🤖 deployment_user] --> R1[PUBLIC - aucun droit]
-    DU --> R2[dev_sec_ops_role - droits de déploiement]
-    R2 -->|défini dans config.toml| DEFAULT[✅ Rôle par défaut]
+    DU[🤖 deployment_user] --> R1[PUBLIC<br/>⚠️ Aucun droit utile]
+    DU --> R2[dev_sec_ops_role<br/>✅ Droits de déploiement]
+    R2 -->|Configuré dans config.toml| DEFAULT[✅ Rôle utilisé automatiquement]
 
     style R1 fill:#ff7675,color:#fff
     style R2 fill:#00b894,color:#fff
     style DEFAULT fill:#0984e3,color:#fff
 ```
 
-### Assigner le rôle dans Snowflake
+### Étape 1 : Assigner le rôle dans Snowflake
 
 ```sql
 -- ============================================================
--- Assigner le rôle dev_sec_ops_role à deployment_user
--- ============================================================
--- IMPORTANT : cette commande doit être exécutée DEPUIS accountadmin
--- (seul accountadmin peut assigner des rôles à d'autres utilisateurs
--- sans avoir besoin de MANAGE GRANTS)
+-- Cette étape s'exécute dans l'UI Snowflake (Worksheets)
+-- Elle DOIT être faite par accountadmin
 -- ============================================================
 
+-- Se mettre en tant qu'administrateur du compte
 USE ROLE accountadmin;
 
--- Assigner le rôle dev_sec_ops_role à l'utilisateur de déploiement
--- Sans cette étape, deployment_user ne peut pas utiliser ce rôle même si on le configure dans config.toml
+
+-- "GRANT ROLE ... TO USER ..." = donner le droit d'utiliser un rôle à un utilisateur
+-- C'est différent de "GRANT privilege TO ROLE" (qui donne des droits sur des objets)
+-- Ici on dit : "deployment_user a maintenant le droit d'UTILISER le rôle dev_sec_ops_role"
+--
+-- Sans ce GRANT :
+--   → deployment_user essaie d'utiliser dev_sec_ops_role
+--   → Snowflake répond : erreur 250001 "Role not granted to this user"
+--
+-- Avec ce GRANT :
+--   → deployment_user peut maintenant "USE ROLE dev_sec_ops_role" ou le configurer dans CLI
 GRANT ROLE dev_sec_ops_role TO USER deployment_user;
 
--- Vérifier que le rôle a bien été assigné
+
+-- Vérification : lister tous les rôles assignés à deployment_user
+-- Dans le résultat, on doit voir "DEV_SEC_OPS_ROLE" dans la colonne "role"
 SHOW GRANTS TO USER deployment_user;
 ```
 
-### Configurer le rôle par défaut dans config.toml
+### Étape 2 : Ajouter le rôle dans config.toml
 
 ```toml
-# config.toml — Ajouter le rôle par défaut
+# Ouvrir config.toml et ajouter la ligne "role" dans la section [connections.default]
+# Avant cette modification, la section ressemblait à ceci :
+#
+# [connections.default]
+# account = "ONB31943"
+# user = "deployment_user"
+# authenticator = "SNOWFLAKE_JWT"
+# private_key_file = "./snowflake_rsa_key.p8"
+#
+# Après la modification :
+
 [connections.default]
 account = "ONB31943"
 user = "deployment_user"
 authenticator = "SNOWFLAKE_JWT"
 private_key_file = "./snowflake_rsa_key.p8"
-role = "dev_sec_ops_role"   # ← Ajouter cette ligne
+role = "dev_sec_ops_role"
+# ↑ Cette ligne dit à snow CLI :
+#   "À chaque connexion, utiliser automatiquement le rôle dev_sec_ops_role"
+#   Sans cette ligne : Snowflake utilise PUBLIC (aucun droit)
+#   Avec cette ligne : Snowflake utilise dev_sec_ops_role (droits de déploiement)
 ```
 
-### Vérifier que le rôle est bien actif
+### Étape 3 : Vérifier que le rôle est bien actif
 
 ```bash
-# Tester la connexion : la colonne "Role" doit maintenant afficher "DEV_SEC_OPS_ROLE"
+# Relancer le test de connexion
+# Cette fois, la colonne "Role" doit afficher "DEV_SEC_OPS_ROLE" (et non plus "PUBLIC")
 snow --config-file ./config.toml connection test
 
-# Résultat attendu :
-# | Role     | DEV_SEC_OPS_ROLE |
+# ✅ Résultat attendu maintenant :
+# | Role     | DEV_SEC_OPS_ROLE |   ← ✅ Le bon rôle est actif !
 ```
-
-> ⚠️ **Erreur `250001 (08001)`** : si vous voyez `Role 'ACCOUNTADMIN' specified in the connect string is not granted to this user`, c'est que vous avez mis un rôle dans config.toml que deployment_user n'a pas. Vérifiez avec `SHOW GRANTS TO USER deployment_user`.
 
 ---
 
@@ -534,83 +797,154 @@ snow --config-file ./config.toml connection test
 ### La commande principale : `snow sql`
 
 ```bash
-# Syntaxe générale de snow sql :
+# "snow sql --help" = afficher l'aide complète de la sous-commande "sql"
+# Permet de voir toutes les options disponibles avec leurs descriptions
 snow sql --help
 
-# Deux modes principaux :
-# Mode fichier  : snow sql -f fichier.sql
-# Mode inline   : snow sql -q "SELECT CURRENT_USER()"
+# Il y a deux façons d'utiliser snow sql :
+#
+# Mode fichier (-f) : exécute TOUT le contenu d'un fichier .sql
+#   → Idéal pour déployer des scripts complets
+#   → Les instructions sont exécutées dans l'ordre du fichier
+#
+# Mode inline (-q) : exécute une seule requête SQL tapée directement
+#   → Idéal pour des tests rapides ou des vérifications
+#   → La requête est entre guillemets dans la commande
 ```
 
 ### Déployer un fichier SQL
 
 ```bash
-# Déployer un fichier SQL via Snowflake CLI
-# Décryptage des options :
-#   --config-file ./config.toml  → utiliser le fichier de config local (et non ~/.snowflake/)
-#   sql                          → sous-commande SQL
-#   -f sql/rbac/initialisation_application.sql   → fichier SQL à exécuter
-#   (-f est l'abréviation de --filename)
+# Commande complète pour déployer un fichier SQL via Snowflake CLI
+#
+# Détail de chaque partie :
+#
+#   snow
+#   → le programme Snowflake CLI
+#
+#   --config-file ./config.toml
+#   → "utilise CE fichier de config" (pas le config global de ~/.snowflake/)
+#   → Toujours préciser si votre config.toml est dans le dossier du projet
+#
+#   sql
+#   → sous-commande "sql" : on veut exécuter du SQL
+#
+#   -f sql/rbac/initialisation_application.sql
+#   → "-f" est l'abréviation de "--filename"
+#   → "exécute le contenu de CE fichier SQL"
+#   → Le chemin est relatif au dossier où on tape la commande
 
 snow --config-file ./config.toml sql -f sql/rbac/initialisation_application.sql
 ```
 
 ### Exemple de fichier à déployer : `initialisation_application.sql`
 
+Ce fichier crée toute l'infrastructure de l'application (database, schémas, rôles).
+Chaque ligne est expliquée :
+
 ```sql
 -- ============================================================
--- SCRIPT : initialisation_application.sql
--- Crée la database, les schémas et les rôles de l'application
--- Ce script est conçu pour être exécuté par deployment_user
--- avec le rôle dev_sec_ops_role
+-- FICHIER : sql/rbac/initialisation_application.sql
+-- ============================================================
+-- Ce script initialise la structure complète de l'application health_app_2
+-- Il est conçu pour être exécuté par deployment_user avec le rôle dev_sec_ops_role
+-- Il peut être rejoué sans erreur grâce aux clauses IF NOT EXISTS
 -- ============================================================
 
--- Crée la database principale du projet (idempotent)
-CREATE DATABASE HEALTH_APP_2;
 
--- Crée les schémas de données dans cette database
-CREATE SCHEMA RAW;        -- Zone de données brutes
-CREATE SCHEMA STAGING;    -- Zone de données transformées
+-- ──────────────────────────────────────────────────────────
+-- PARTIE 1 : Créer la base de données
+-- ──────────────────────────────────────────────────────────
 
--- Crée les rôles métier
--- Note : CREATE ROLE (sans IF NOT EXISTS) plante si le rôle existe déjà
--- → utiliser CREATE ROLE IF NOT EXISTS pour l'idempotence
-CREATE ROLE devops_role;
-CREATE ROLE application_role;
-CREATE ROLE engineer_role;
+-- "CREATE DATABASE" = créer une nouvelle base de données dans Snowflake
+-- "IF NOT EXISTS" = ne rien faire (sans erreur) si la database existe déjà
+--   Sans IF NOT EXISTS : erreur si la database existe → le script s'arrête
+--   Avec IF NOT EXISTS : le script continue → comportement "idempotent"
+-- "HEALTH_APP_2" = nom de la database (convention : majuscules pour les objets Snowflake)
+CREATE DATABASE IF NOT EXISTS HEALTH_APP_2;
 
--- Donne le droit d'utiliser la database aux rôles
+
+-- ──────────────────────────────────────────────────────────
+-- PARTIE 2 : Créer les schémas
+-- Un schéma = un "dossier" logique à l'intérieur d'une database
+-- Il permet d'organiser les tables par thème ou par zone de traitement
+-- ──────────────────────────────────────────────────────────
+
+-- Schéma RAW = zone d'atterrissage des données brutes
+-- Les données arrivent ici telles quelles, sans transformation
+-- (ex: fichiers CSV uploadés depuis S3)
+CREATE SCHEMA IF NOT EXISTS HEALTH_APP_2.RAW;
+
+-- Schéma STAGING = zone de transformation
+-- Les données du schéma RAW sont nettoyées et transformées ici
+-- (ex: colonnes renommées, types corrigés, doublons supprimés)
+CREATE SCHEMA IF NOT EXISTS HEALTH_APP_2.STAGING;
+
+
+-- ──────────────────────────────────────────────────────────
+-- PARTIE 3 : Créer les rôles métier
+-- ──────────────────────────────────────────────────────────
+
+-- "CREATE ROLE IF NOT EXISTS" = créer le rôle seulement s'il n'existe pas encore
+-- Si on utilise CREATE ROLE sans IF NOT EXISTS et que le rôle existe → erreur 42710
+
+-- devops_role = rôle pour l'équipe DevOps
+-- Aura tous les droits sur les schémas (CREATE TABLE, MODIFY, etc.)
+CREATE ROLE IF NOT EXISTS devops_role;
+
+-- application_role = rôle pour les processus applicatifs (pipelines de données)
+-- Aura SELECT + INSERT sur les tables
+CREATE ROLE IF NOT EXISTS application_role;
+
+-- engineer_role = rôle pour les data engineers
+-- Aura uniquement SELECT (lecture seule) pour analyser les données
+CREATE ROLE IF NOT EXISTS engineer_role;
+
+
+-- ──────────────────────────────────────────────────────────
+-- PARTIE 4 : Donner les droits aux rôles
+-- ──────────────────────────────────────────────────────────
+
+-- Rappel : pour accéder à des tables dans Snowflake, il faut OBLIGATOIREMENT :
+--   1. USAGE sur la DATABASE (pour "entrer" dans la database)
+--   2. USAGE sur le SCHEMA (pour "entrer" dans le schéma)
+--   3. Le droit sur la TABLE (SELECT, INSERT, etc.)
+-- Si l'un de ces trois niveaux manque → erreur "Insufficient privileges"
+
+-- Donner le droit d'accéder à la database au rôle devops_role
+-- Sans ce GRANT, même avec ALL sur les schémas, devops_role ne peut pas accéder à la database
 GRANT USAGE ON DATABASE HEALTH_APP_2 TO ROLE DEVOPS_ROLE;
 
--- Donne tous les droits sur les schémas à devops_role
-GRANT ALL ON SCHEMA raw TO ROLE devops_role;
-GRANT ALL ON SCHEMA staging TO ROLE devops_role;
+-- "GRANT ALL ON SCHEMA" = donner TOUS les droits sur ce schéma
+-- ALL inclut : USAGE + CREATE TABLE + CREATE VIEW + CREATE TASK + CREATE STREAM + MODIFY + MONITOR
+-- On donne ALL à devops_role car c'est lui qui va créer et gérer tous les objets
+GRANT ALL ON SCHEMA HEALTH_APP_2.RAW TO ROLE devops_role;
+GRANT ALL ON SCHEMA HEALTH_APP_2.STAGING TO ROLE devops_role;
 
--- Assigne le rôle à deployment_user pour que le pipeline puisse s'en servir
+
+-- ──────────────────────────────────────────────────────────
+-- PARTIE 5 : Assigner les rôles à deployment_user
+-- ──────────────────────────────────────────────────────────
+
+-- "GRANT ROLE ... TO USER ..." = permettre à deployment_user d'utiliser ces rôles
+-- Nécessaire pour que le pipeline CI/CD puisse utiliser "--role devops_role" dans snow sql
+-- Sans ces GRANTs → erreur lors du déploiement avec --role
 GRANT ROLE devops_role TO USER deployment_user;
 GRANT ROLE application_role TO USER deployment_user;
 ```
 
-### Résultat d'un déploiement réussi
+### Résultats d'un déploiement
 
+**✅ Succès** : chaque instruction SQL affiche son résultat :
 ```
 CREATE DATABASE HEALTH_APP_2;
-+------------------------------------------+
-| status                                   |
-|------------------------------------------|
-| Database HEALTH_APP_2 successfully created. |
-+------------------------------------------+
++--------------------------------------------------+
+| status                                           |
+|--------------------------------------------------|
+| Database HEALTH_APP_2 successfully created.      |
++--------------------------------------------------+
 
-CREATE SCHEMA RAW;
-+--------------------------------------+
-| status                               |
-|--------------------------------------|
-| Schema RAW successfully created.     |
-+--------------------------------------+
-
-...
-
-GRANT ALL ON SCHEMA raw TO ROLE devops_role;
+GRANT ALL ON SCHEMA HEALTH_APP_2.RAW TO ROLE devops_role;
 +----------------------------------+
 | status                           |
 |----------------------------------|
@@ -618,111 +952,162 @@ GRANT ALL ON SCHEMA raw TO ROLE devops_role;
 +----------------------------------+
 ```
 
-### Résultat d'une erreur (objet déjà existant)
-
+**❌ Erreur** si on oublie `IF NOT EXISTS` :
 ```
 CREATE ROLE engineer_role;
-+------+
 Error
 002002 (42710): SQL compilation error:
 Object 'ENGINEER_ROLE' already exists.
 ```
 
-> 💡 **Comment rendre un script idempotent** : utiliser `CREATE OR REPLACE` ou `CREATE ... IF NOT EXISTS` pour éviter les erreurs si l'objet existe déjà.
+> 💡 **Règle d'or** : Toujours écrire des scripts **idempotents** — c'est-à-dire qui peuvent être rejoués plusieurs fois sans erreur et sans effet indésirable.
 
 ```sql
--- ❌ Plante si l'objet existe déjà
+-- ❌ NON IDEMPOTENT : plante si l'objet existe déjà
 CREATE ROLE engineer_role;
+CREATE DATABASE HEALTH_APP_2;
 
--- ✅ Idempotent : ne plante pas
+-- ✅ IDEMPOTENT option 1 : ne fait rien si l'objet existe déjà
 CREATE ROLE IF NOT EXISTS engineer_role;
+CREATE DATABASE IF NOT EXISTS HEALTH_APP_2;
 
--- ✅ Idempotent : recrée l'objet si nécessaire
+-- ✅ IDEMPOTENT option 2 : recrée l'objet si nécessaire (attention : perd les données pour les tables !)
 CREATE OR REPLACE ROLE engineer_role;
+CREATE OR REPLACE DATABASE HEALTH_APP_2;
 ```
 
 ---
 
 ## 8. Déployer avec un rôle différent du rôle par défaut
 
-### Le problème : un seul rôle ne peut pas tout faire
+### Le problème : un rôle ne peut pas tout faire
 
-Dans notre architecture RBAC, différents objets sont créés par différents rôles :
-- `dev_sec_ops_role` crée les databases et rôles
-- `dev_ops_role` crée les tables, views, file formats, stages
+Dans notre architecture RBAC, chaque rôle a ses responsabilités :
+- `dev_sec_ops_role` → crée les databases, gère les rôles (niveau compte)
+- `devops_role` → crée les tables, file formats, stages (niveau schéma)
 
-Il faut pouvoir **switcher de rôle à la demande** dans une commande `snow sql`.
-
-### Changer le rôle pour une seule commande
+Quand on déploie un file format, on doit utiliser `devops_role` (pas le rôle par défaut `dev_sec_ops_role`).
 
 ```bash
-# Déployer un fichier SQL en utilisant un rôle DIFFÉRENT du rôle par défaut
-# Décryptage des nouvelles options :
-#   --role devops_role       → utiliser ce rôle pour cette commande (écrase le rôle du config.toml)
-#   --database health_app_2  → utiliser cette database (évite d'écrire USE DATABASE dans le SQL)
+# Déployer un fichier SQL en CHANGEANT le rôle pour cette commande spécifique
+#
+# Nouvelles options par rapport à avant :
+#
+#   --role devops_role
+#   → "Pour CETTE commande seulement, utiliser le rôle devops_role"
+#   → Cela ÉCRASE temporairement le rôle défini dans config.toml
+#   → Après la commande, le rôle par défaut de config.toml reprend le dessus
+#   → Utiliser quand l'objet à créer nécessite un rôle différent du rôle par défaut
+#
+#   --database health_app_2
+#   → "Utiliser cette database comme contexte d'exécution"
+#   → Équivaut à écrire "USE DATABASE health_app_2;" au début du fichier SQL
+#   → Pratique pour ne pas avoir à écrire le nom de la database dans chaque fichier SQL
 
 snow --config-file ./config.toml sql \
   --role devops_role \
   --database health_app_2 \
   -f sql/ddl/file_format.sql
-
-# Ou avec une query inline :
-snow --config-file ./config.toml sql \
-  --role devops_role \
-  --database health_app_2 \
-  -q "drop file format raw.csv_file"
 ```
 
-### Exemple : déployer un File Format avec devops_role
+### Exemple concret : déployer un File Format
+
+Un **File Format** dans Snowflake = une définition qui dit "comment lire les fichiers".
+Il faut indiquer le type (CSV, JSON...), le séparateur, le format des dates, etc.
 
 ```sql
--- sql/ddl/file_format.sql
 -- ============================================================
--- Création du format de fichier CSV pour le schéma RAW
--- Ce script doit être exécuté avec le rôle devops_role
--- qui a ALL sur le schéma raw
+-- FICHIER : sql/ddl/file_format.sql
+-- ============================================================
+-- Définit le format des fichiers CSV utilisés dans ce projet
+-- ⚠️ Ce script doit être exécuté avec le rôle devops_role
+--    (qui a le droit CREATE sur le schéma raw)
 -- ============================================================
 
--- Crée ou remplace le format de fichier CSV
--- CREATE OR ALTER : équivalent à CREATE OR REPLACE pour les file formats
+
+-- "CREATE OR ALTER FILE FORMAT" = créer le format de fichier s'il n'existe pas,
+--   ou modifier ses propriétés s'il existe déjà
+--   Équivalent à CREATE OR REPLACE mais plus sécurisé (ne supprime pas l'objet)
+
+-- "raw.csv_file" = nom complet de l'objet : schéma.nom
+--   "raw" = le schéma dans lequel créer ce format (défini dans le contexte de la database)
+--   "csv_file" = le nom qu'on donne à ce format de fichier
+
 CREATE OR ALTER FILE FORMAT raw.csv_file
-  TYPE = CSV                                  -- Type de fichier : CSV
-  FIELD_DELIMITER = '|'                       -- Séparateur de champs : pipe (|)
-  TIMESTAMP_FORMAT = 'YYYYMMDD-HH24:MI:SS:FF3'; -- Format de timestamp personnalisé
 
--- Vérifier que le file format a bien été créé avec les bons paramètres
+  -- "TYPE = CSV" = les fichiers à lire sont au format CSV (texte avec séparateurs)
+  -- Autres valeurs possibles : JSON, PARQUET, AVRO, ORC, XML
+  TYPE = CSV
+
+  -- "FIELD_DELIMITER = '|'" = le caractère qui sépare les colonnes dans le CSV
+  -- Ici on utilise le pipe "|" (pas la virgule "," qui est le défaut)
+  -- Exemple de ligne dans le fichier : "ALICE|MARTIN|1990-01-15|Paris"
+  FIELD_DELIMITER = '|'
+
+  -- "TIMESTAMP_FORMAT = ..." = comment interpréter les colonnes de type date/heure
+  -- 'YYYYMMDD-HH24:MI:SS:FF3' se lit :
+  --   YYYY = année sur 4 chiffres (ex: 2024)
+  --   MM   = mois sur 2 chiffres (ex: 01 pour janvier)
+  --   DD   = jour sur 2 chiffres (ex: 15)
+  --   -    = tiret littéral
+  --   HH24 = heures en format 24h (ex: 14 pour 14h)
+  --   :MI  = minutes (ex: 30)
+  --   :SS  = secondes (ex: 45)
+  --   :FF3 = millisecondes sur 3 chiffres (ex: 123)
+  -- Exemple de timestamp dans le fichier : "20240115-14:30:45:123"
+  TIMESTAMP_FORMAT = 'YYYYMMDD-HH24:MI:SS:FF3';
+
+
+-- "DESC FILE FORMAT" = afficher les propriétés du format de fichier qu'on vient de créer
+-- Permet de vérifier que toutes les propriétés ont bien été enregistrées
+-- (TYPE, FIELD_DELIMITER, TIMESTAMP_FORMAT, et toutes les autres propriétés par défaut)
 DESC FILE FORMAT raw.csv_file;
 ```
 
 ```bash
-# Déploiement avec le bon rôle et la bonne database
+# Déploiement : utiliser devops_role car c'est lui qui a le droit CREATE sur le schéma raw
+# Préciser la database pour que Snowflake sache dans quel contexte chercher le schéma "raw"
 snow --config-file ./config.toml sql \
   --role devops_role \
   --database health_app_2 \
   -f sql/ddl/file_format.sql
 
-# Résultat attendu :
+# ✅ Résultat attendu :
 # CREATE OR ALTER FILE FORMAT raw.csv_file
 # TYPE=CSV
 # FIELD_DELIMITER='|'
 # TIMESTAMP_FORMAT='YYYYMMDD-HH24:MI:SS:FF3';
-# (suivi des résultats de DESC FILE FORMAT)
+# (suivi du résultat de DESC FILE FORMAT : tableau avec toutes les propriétés)
 ```
 
-### Schéma des options `snow sql`
+### Et pour supprimer et recréer proprement ?
 
-```mermaid
-graph LR
-    CMD["snow sql"] --> CF["--config-file config.toml<br/>Quel fichier de config ?"]
-    CF --> ROLE["--role devops_role<br/>Quel rôle utiliser ?<br/>(optionnel, écrase config.toml)"]
-    ROLE --> DB["--database health_app_2<br/>Quelle database ?<br/>(optionnel)"]
-    DB --> SRC["--file / -f fichier.sql<br/>--query / -q 'SQL inline'"]
+```bash
+# Parfois on veut supprimer un objet pour le recréer proprement
+# (test, modification majeure, etc.)
 
-    style CMD fill:#6c5ce7,color:#fff
-    style CF fill:#0984e3,color:#fff
-    style ROLE fill:#00b894,color:#fff
-    style DB fill:#fdcb6e,color:#333
-    style SRC fill:#e17055,color:#fff
+# Supprimer le file format avec une query inline (-q)
+# "--role devops_role" = utiliser le rôle qui a les droits sur ce schéma
+# "--database health_app_2" = contexte de la database
+# "-q" = query inline (une seule commande SQL, entre guillemets)
+snow --config-file ./config.toml sql \
+  --role devops_role \
+  --database health_app_2 \
+  -q "drop file format raw.csv_file"
+
+# ✅ Résultat attendu :
+# drop file format raw.csv_file
+# +------------------------------------+
+# | status                             |
+# |------------------------------------|
+# | CSV_FILE successfully dropped.     |
+# +------------------------------------+
+
+# Puis redéployer depuis le fichier pour recréer proprement
+snow --config-file ./config.toml sql \
+  --role devops_role \
+  --database health_app_2 \
+  -f sql/ddl/file_format.sql
 ```
 
 ---
@@ -733,113 +1118,61 @@ graph LR
 
 ```sql
 -- ================================================================
--- SCRIPT : setup_deployment_user.sql
+-- FICHIER : sql/rbac/setup_deployment_user.sql
 -- ================================================================
--- Description : Crée et configure l'utilisateur de déploiement
---               avec authentification par clé RSA
--- Prérequis   : Être connecté avec le rôle ACCOUNTADMIN
---               Avoir généré la paire de clés RSA (voir section 4)
+-- OBJECTIF   : Créer et configurer l'utilisateur de déploiement CI/CD
+-- QUI EXÉCUTE: Administrateur (accountadmin) via l'UI Snowflake
+-- QUAND      : Une seule fois, lors de la mise en place initiale du projet
+-- PRÉREQUIS  : Avoir générés les clés RSA avec openssl (section 4)
 -- ================================================================
 
--- Se positionner en tant qu'administrateur du compte
+
+-- ── Étape 0 : Se positionner avec le bon rôle ──────────────────
+-- Toutes les opérations suivantes nécessitent accountadmin
 USE ROLE accountadmin;
 
--- ----------------------------------------------------------------
--- PARTIE 1 : Créer l'utilisateur de service
--- ----------------------------------------------------------------
 
--- Crée l'utilisateur de déploiement
+-- ── Étape 1 : Créer l'utilisateur de service ───────────────────
+
 -- TYPE=SERVICE = pas de connexion UI, authentification programmatique uniquement
--- CREATE OR REPLACE = idempotent (peut être rejoué sans erreur)
+-- CREATE OR REPLACE = si l'utilisateur existe déjà, le recréer sans erreur (idempotent)
 CREATE OR REPLACE USER deployment_user TYPE = SERVICE;
 
--- ----------------------------------------------------------------
--- PARTIE 2 : Assigner la clé publique RSA
--- ----------------------------------------------------------------
 
--- Assigner la clé publique RSA à deployment_user
--- RSA_PUBLIC_KEY = contenu base64 de la clé publique SANS les lignes BEGIN/END
--- ⚠️ Remplacer la valeur par VOTRE clé publique générée avec openssl
-ALTER USER deployment_user SET RSA_PUBLIC_KEY = 'MIIBIjANBgkqhkiG...VotreClePublique...IDAQAB';
+-- ── Étape 2 : Assigner la clé publique RSA ─────────────────────
 
--- ----------------------------------------------------------------
--- PARTIE 3 : Assigner les rôles nécessaires
--- ----------------------------------------------------------------
+-- Commande pour extraire la clé publique (à faire dans le terminal) :
+--   grep -v "BEGIN\|END" snowflake_rsa_public.pub | tr -d '\n'
+-- Copier le résultat et le coller à la place de 'VotreClePubliqueIci'
 
--- Assigner le rôle principal de déploiement
--- Sans ce GRANT, deployment_user ne peut utiliser que le rôle PUBLIC
+-- RSA_PUBLIC_KEY = la partie PUBLIQUE de votre paire de clés RSA
+--   → C'est ce que Snowflake utilise pour VÉRIFIER que c'est bien vous qui vous connectez
+--   → Copier UNIQUEMENT le contenu entre les lignes -----BEGIN/END PUBLIC KEY-----
+--   → Tout sur UNE seule ligne SQL (pas de sauts de ligne dans la valeur)
+ALTER USER deployment_user SET RSA_PUBLIC_KEY = 'MIIBIjANBgkqhkiG...VotreClePubliqueIci...IDAQAB';
+
+
+-- ── Étape 3 : Assigner les rôles nécessaires ───────────────────
+
+-- GRANT ROLE = donner le droit d'UTILISER ce rôle à cet utilisateur
+-- Sans ce GRANT : si config.toml précise role="dev_sec_ops_role" → erreur à la connexion
+-- dev_sec_ops_role = le rôle principal du pipeline (peut créer databases, rôles, etc.)
 GRANT ROLE dev_sec_ops_role TO USER deployment_user;
 
--- Vérification finale : afficher tous les droits de deployment_user
+
+-- ── Étape 4 : Vérifications finales ────────────────────────────
+
+-- Lister TOUS les rôles assignés à deployment_user
+-- Dans le résultat : chercher DEV_SEC_OPS_ROLE dans la colonne "role"
 SHOW GRANTS TO USER deployment_user;
 
--- Vérifier les détails de l'utilisateur (chercher RSA_PUBLIC_KEY et TYPE=SERVICE)
+-- Afficher toutes les propriétés de deployment_user
+-- Vérifications clés :
+--   TYPE              → doit être "SERVICE"
+--   RSA_PUBLIC_KEY    → doit afficher le début de votre clé (MIIBIjAN...)
+--   RSA_PUBLIC_KEY_FP → doit afficher un fingerprint SHA256:...
+--   DISABLED          → doit être "false" (l'utilisateur est actif)
 DESC USER deployment_user;
-```
-
-### Script complet : déploiement de l'application
-
-```sql
--- ================================================================
--- SCRIPT : initialisation_application.sql
--- ================================================================
--- Description : Initialise la structure complète de health_app_2
--- Exécution   : snow --config-file ./config.toml sql
---               -f sql/rbac/initialisation_application.sql
--- Rôle requis : dev_sec_ops_role
--- ================================================================
-
--- ----------------------------------------------------------------
--- SECTION 1 : Infrastructure de données
--- ----------------------------------------------------------------
-
--- Crée la database principale du projet
--- Utiliser IF NOT EXISTS pour l'idempotence
-CREATE DATABASE IF NOT EXISTS HEALTH_APP_2;
-
--- Créer les deux zones de données
-CREATE SCHEMA IF NOT EXISTS HEALTH_APP_2.RAW;      -- Zone d'ingestion brute
-CREATE SCHEMA IF NOT EXISTS HEALTH_APP_2.STAGING;  -- Zone de transformation
-
--- ----------------------------------------------------------------
--- SECTION 2 : Rôles métier
--- ----------------------------------------------------------------
-
--- Créer les rôles métier
--- IF NOT EXISTS = ne plante pas si le rôle existe déjà
-CREATE ROLE IF NOT EXISTS devops_role;          -- Gestion des objets de données
-CREATE ROLE IF NOT EXISTS application_role;    -- Exécution des pipelines
-CREATE ROLE IF NOT EXISTS engineer_role;       -- Lecture et monitoring
-
--- ----------------------------------------------------------------
--- SECTION 3 : Droits du rôle devops_role
--- ----------------------------------------------------------------
-
--- Accès à la database (obligatoire avant tout accès aux objets internes)
-GRANT USAGE ON DATABASE HEALTH_APP_2 TO ROLE DEVOPS_ROLE;
-
--- Tous les droits sur les deux schémas
--- ALL = USAGE + CREATE TABLE + CREATE VIEW + CREATE TASK + MODIFY + MONITOR + ...
-GRANT ALL ON SCHEMA HEALTH_APP_2.RAW TO ROLE devops_role;
-GRANT ALL ON SCHEMA HEALTH_APP_2.STAGING TO ROLE devops_role;
-
--- ----------------------------------------------------------------
--- SECTION 4 : Droits du rôle engineer_role
--- ----------------------------------------------------------------
-
-GRANT USAGE ON DATABASE HEALTH_APP_2 TO ROLE engineer_role;
-
--- SELECT sur toutes les tables futures (pas besoin de re-GRANT à chaque nouvelle table)
-GRANT SELECT ON FUTURE TABLES IN SCHEMA HEALTH_APP_2.RAW TO ROLE engineer_role;
-GRANT SELECT ON FUTURE TABLES IN SCHEMA HEALTH_APP_2.STAGING TO ROLE engineer_role;
-
--- ----------------------------------------------------------------
--- SECTION 5 : Assigner les rôles à deployment_user
--- ----------------------------------------------------------------
-
--- deployment_user doit avoir les rôles pour pouvoir les "USE" lors des déploiements
-GRANT ROLE devops_role TO USER deployment_user;
-GRANT ROLE application_role TO USER deployment_user;
 ```
 
 ### Script shell de déploiement complet
@@ -847,53 +1180,89 @@ GRANT ROLE application_role TO USER deployment_user;
 ```bash
 #!/bin/bash
 # ================================================================
-# deploy.sh — Script de déploiement complet pour health_app_2
+# FICHIER : deploy.sh
 # ================================================================
-# Usage: ./deploy.sh
-# Prérequis: snow CLI installé, config.toml présent, clé RSA présente
+# OBJECTIF : Déployer l'application health_app_2 sur Snowflake
+# USAGE    : ./deploy.sh  (depuis le dossier racine du projet)
+# PRÉREQUIS: - snow CLI installé (pip install snowflake-cli)
+#            - config.toml présent et configuré
+#            - snowflake_rsa_key.p8 présent
+#            - deployment_user créé et configuré dans Snowflake
 # ================================================================
 
-set -e  # Arrêter le script en cas d'erreur
+# "set -e" = arrêter le script IMMÉDIATEMENT si une commande échoue
+# Sans "set -e" : le script continue même si snow sql retourne une erreur
+# Avec "set -e" : si une étape échoue, tout s'arrête → évite des déploiements partiels
+set -e
 
 echo "🚀 Début du déploiement health_app_2"
+echo "======================================"
 
-# ----------------------------------------------------------------
-# ÉTAPE 1 : Tester la connexion avant tout
-# ----------------------------------------------------------------
-echo "📡 Test de connexion Snowflake..."
+
+# ── ÉTAPE 1 : Tester la connexion avant de commencer ──────────
+echo ""
+echo "📡 Étape 1/4 : Test de connexion à Snowflake..."
+
+# On teste la connexion AVANT de commencer le déploiement
+# Si la connexion échoue, "set -e" arrêtera le script ici
+# → Évite de commencer un déploiement partiel
 snow --config-file ./config.toml connection test
 
-# ----------------------------------------------------------------
-# ÉTAPE 2 : Initialiser l'infrastructure (database, schémas, rôles)
-# Rôle : dev_sec_ops_role (défini dans config.toml)
-# ----------------------------------------------------------------
-echo "🏗️  Initialisation de l'infrastructure..."
+echo "✅ Connexion OK !"
+
+
+# ── ÉTAPE 2 : Initialisation (database, schémas, rôles) ───────
+echo ""
+echo "🏗️  Étape 2/4 : Initialisation de l'infrastructure..."
+
+# Ce script crée la database, les schémas, les rôles et les droits de base
+# Rôle utilisé : dev_sec_ops_role (celui du config.toml par défaut)
+# Ce rôle peut créer des databases et des rôles au niveau du compte
 snow --config-file ./config.toml sql \
   -f sql/rbac/initialisation_application.sql
 
-# ----------------------------------------------------------------
-# ÉTAPE 3 : Créer les objets DDL (file formats, stages, tables...)
-# Rôle : devops_role (différent du rôle par défaut)
-# ----------------------------------------------------------------
-echo "📋 Création des file formats..."
+echo "✅ Infrastructure créée !"
+
+
+# ── ÉTAPE 3 : Création des objets DDL (file formats, tables...) ──
+echo ""
+echo "📋 Étape 3/4 : Création des objets de données..."
+
+# Déployer le file format CSV
+# --role devops_role  : ce rôle a ALL sur les schémas → peut créer des file formats
+# --database health_app_2 : contexte de la database (pour que "raw.csv_file" soit résolu)
 snow --config-file ./config.toml sql \
   --role devops_role \
   --database health_app_2 \
   -f sql/ddl/file_format.sql
 
-echo "📦 Création des stages..."
+echo "   ✅ File formats créés"
+
+# Déployer les stages (connexions vers le stockage cloud S3/Azure/GCS)
+# Même logique : --role devops_role car il a les droits sur le schéma
 snow --config-file ./config.toml sql \
   --role devops_role \
   --database health_app_2 \
   -f sql/ddl/external_stage.sql
 
-echo "🗄️  Création des tables..."
+echo "   ✅ Stages créés"
+
+# Déployer les tables de données brutes
 snow --config-file ./config.toml sql \
   --role devops_role \
   --database health_app_2 \
   -f sql/ddl/raw_tbl.sql
 
+echo "   ✅ Tables créées"
+
+
+# ── ÉTAPE 4 : Message de fin ───────────────────────────────────
+echo ""
+echo "======================================"
 echo "✅ Déploiement terminé avec succès !"
+echo "   Database : HEALTH_APP_2"
+echo "   Schémas  : RAW, STAGING"
+echo "   Rôles    : devops_role, application_role, engineer_role"
 ```
 
 ---
@@ -905,94 +1274,140 @@ echo "✅ Déploiement terminé avec succès !"
 ### Étape 1 : Préparer l'environnement
 
 ```bash
-# Installer Snowflake CLI
+# Installer Snowflake CLI si pas déjà fait
 pip install snowflake-cli
 
-# Vérifier l'installation
+# Vérifier que snow est disponible dans le terminal
 snow --version
 
-# Créer la structure de projet
+# Créer l'arborescence du projet
+# "mkdir -p" = créer les dossiers, y compris les dossiers parents si nécessaires
 mkdir -p expense_tracker/sql/{ddl,dml,rbac}
+
+# Se déplacer dans le dossier du projet
 cd expense_tracker
 
-# Créer les fichiers de config (vides pour l'instant)
+# Créer le fichier de config vide (nécessaire avant de lancer snow connection add)
 touch config.toml
+
+# Vérifier l'arborescence créée
+ls -la
 ```
 
 ### Étape 2 : Générer les clés RSA
 
 ```bash
-# Générer la clé privée
-openssl genrsa 2048 | openssl pkcs8 -topk8 -inform PEM \
-  -out expense_rsa_key.p8 -nocrypt
+# Générer la clé PRIVÉE (format PKCS8 requis par Snowflake, sans chiffrement)
+openssl genrsa 2048 | openssl pkcs8 \
+  -topk8 \           # → convertir au format PKCS8
+  -inform PEM \      # → le format d'entrée est PEM
+  -out expense_rsa_key.p8 \  # → nom du fichier de sortie
+  -nocrypt           # → ne pas chiffrer la clé (plus simple pour CI/CD)
 
-# Générer la clé publique
-openssl rsa -in expense_rsa_key.p8 -pubout -out expense_rsa_public.pub
+# Générer la clé PUBLIQUE à partir de la clé privée
+openssl rsa \
+  -in expense_rsa_key.p8 \        # → lire la clé privée
+  -pubout \                         # → extraire uniquement la partie publique
+  -out expense_rsa_public.pub       # → sauvegarder dans ce fichier
 
-# Protéger la clé privée
+# Protéger la clé privée (lecture uniquement par son propriétaire)
 chmod 600 expense_rsa_key.p8
 
-# Vérifier les fichiers créés
+# Vérifier que les deux fichiers ont été créés avec les bonnes permissions
 ls -la expense_rsa_key.p8 expense_rsa_public.pub
+# expense_rsa_key.p8    doit avoir : -rw------- (600)
+# expense_rsa_public.pub peut avoir : -rw-r--r-- (644, lecture possible par tous)
 ```
 
 ### Étape 3 : Créer l'utilisateur Snowflake
 
 ```sql
--- Exécuter dans l'UI Snowflake (Worksheets)
+-- Exécuter dans l'interface web Snowflake (Worksheets)
+
 USE ROLE accountadmin;
 
--- Créer l'utilisateur de service
+-- Créer l'utilisateur de service pour le projet expense_tracker
 CREATE OR REPLACE USER expense_deployment_user TYPE = SERVICE;
 
--- Récupérer la clé publique (contenu entre BEGIN/END sans ces lignes)
--- cat expense_rsa_public.pub | grep -v "BEGIN\|END" | tr -d '\n'
-ALTER USER expense_deployment_user SET RSA_PUBLIC_KEY = 'VotreClePubliqueIci...';
+-- Extraire la clé publique dans le terminal :
+--   grep -v "BEGIN\|END" expense_rsa_public.pub | tr -d '\n'
+-- Copier le résultat et remplacer 'VotreClePubliqueIci'
+ALTER USER expense_deployment_user SET RSA_PUBLIC_KEY = 'VotreClePubliqueIci';
 
--- Créer et assigner le rôle admin
+-- Créer le rôle admin pour ce projet
 CREATE ROLE IF NOT EXISTS expense_admin_role;
-GRANT CREATE DATABASE ON ACCOUNT TO ROLE expense_admin_role;
-GRANT CREATE ROLE ON ACCOUNT TO ROLE expense_admin_role;
-GRANT MANAGE GRANTS ON ACCOUNT TO ROLE expense_admin_role;
+
+-- Donner les droits nécessaires à ce rôle
+GRANT CREATE DATABASE   ON ACCOUNT TO ROLE expense_admin_role;  -- peut créer des databases
+GRANT CREATE ROLE       ON ACCOUNT TO ROLE expense_admin_role;  -- peut créer des rôles
+GRANT MANAGE GRANTS     ON ACCOUNT TO ROLE expense_admin_role;  -- peut gérer les droits
+GRANT CREATE WAREHOUSE  ON ACCOUNT TO ROLE expense_admin_role;  -- peut créer des warehouses
+
+-- Assigner le rôle à notre utilisateur de déploiement
 GRANT ROLE expense_admin_role TO USER expense_deployment_user;
+
+-- Vérification : expense_deployment_user doit avoir expense_admin_role
+SHOW GRANTS TO USER expense_deployment_user;
 ```
 
-### Étape 4 : Configurer la CLI
+### Étape 4 : Configurer la CLI et tester
 
 ```bash
-# Configurer la connexion
+# Configurer la connexion (mode non-interactif)
 snow --config-file ./config.toml connection add \
   --connection-name default \
   --user expense_deployment_user \
   --authenticator SNOWFLAKE_JWT \
   --private-key ./expense_rsa_key.p8 \
-  --account <votre_account_locator> \
+  --account <VOTRE_ACCOUNT_LOCATOR> \   # ← remplacer par votre account locator
   --no-interactive
 
-# Ajouter le rôle dans config.toml
+# Ajouter le rôle par défaut dans config.toml
+# (ouvrir le fichier et ajouter la ligne, ou utiliser cette commande)
 echo 'role = "expense_admin_role"' >> config.toml
 
-# Tester la connexion
+# Fixer les permissions du config.toml
+chmod 600 config.toml
+
+# Tester la connexion - la colonne "Role" doit afficher "EXPENSE_ADMIN_ROLE"
 snow --config-file ./config.toml connection test
 ```
 
-### Étape 5 : Écrire et déployer les scripts SQL
+### Étape 5 : Écrire et déployer le premier script
 
 ```sql
 -- sql/rbac/initialisation_expense.sql
+
+-- Créer la database principale du projet
 CREATE DATABASE IF NOT EXISTS expense_tracker;
-CREATE SCHEMA IF NOT EXISTS expense_tracker.raw;
-CREATE SCHEMA IF NOT EXISTS expense_tracker.datamart;
+
+-- Créer les schémas
+CREATE SCHEMA IF NOT EXISTS expense_tracker.raw;      -- données brutes
+CREATE SCHEMA IF NOT EXISTS expense_tracker.datamart;  -- données agrégées pour les dashboards
+
+-- Créer les rôles métier
 CREATE ROLE IF NOT EXISTS expense_devops_role;
+CREATE ROLE IF NOT EXISTS expense_engineer_role;
+
+-- Donner les droits à expense_devops_role
 GRANT USAGE ON DATABASE expense_tracker TO ROLE expense_devops_role;
 GRANT ALL ON SCHEMA expense_tracker.raw TO ROLE expense_devops_role;
 GRANT ALL ON SCHEMA expense_tracker.datamart TO ROLE expense_devops_role;
+
+-- Donner les droits à expense_engineer_role (lecture seule)
+GRANT USAGE ON DATABASE expense_tracker TO ROLE expense_engineer_role;
+GRANT SELECT ON FUTURE TABLES IN SCHEMA expense_tracker.raw TO ROLE expense_engineer_role;
+GRANT SELECT ON FUTURE TABLES IN SCHEMA expense_tracker.datamart TO ROLE expense_engineer_role;
+
+-- Assigner les rôles à l'utilisateur de déploiement
 GRANT ROLE expense_devops_role TO USER expense_deployment_user;
 ```
 
 ```bash
-# Déployer !
+# Déployer le script !
 snow --config-file ./config.toml sql -f sql/rbac/initialisation_expense.sql
+
+# Si tout va bien : chaque CREATE et GRANT affichera "Statement executed successfully."
 ```
 
 <details>
@@ -1000,7 +1415,7 @@ snow --config-file ./config.toml sql -f sql/rbac/initialisation_expense.sql
 
 ```toml
 [connections.default]
-account = "votre_account_locator"
+account = "votre_account_locator"        # ← remplacer par le vôtre
 user = "expense_deployment_user"
 authenticator = "SNOWFLAKE_JWT"
 private_key_file = "./expense_rsa_key.p8"
@@ -1014,87 +1429,101 @@ role = "expense_admin_role"
 
 ### Dictionnaire des erreurs Snowflake CLI
 
-| Message d'erreur | Cause probable | Solution |
+| Message d'erreur | Ce que ça signifie | Solution |
 |---|---|---|
-| `File './config.toml' does not exist` | Le fichier config.toml n'existe pas encore | `touch config.toml` puis relancer la commande |
-| `No such option: -c` | Syntaxe de commande incorrecte, option inconnue | Vérifier la syntaxe avec `snow --help` ou `snow connection add --help` |
-| `250001 (08001): Role 'ACCOUNTADMIN' specified is not granted to this user` | Le rôle mis dans config.toml n'est pas assigné à deployment_user | `GRANT ROLE <role> TO USER deployment_user;` dans Snowflake |
-| `Bad owner or permissions on config.toml` | Les permissions du fichier config.toml sont trop ouvertes | `chmod 600 config.toml && chown $USER config.toml` |
-| `002002 (42710): Object 'X' already exists` | L'objet existe déjà dans Snowflake | Utiliser `CREATE OR REPLACE` ou `CREATE IF NOT EXISTS` |
-| `SQL access control error: Requested role 'DEVOPS_ROLE' is not assigned to the executing user` | deployment_user n'a pas ce rôle | `GRANT ROLE devops_role TO USER deployment_user;` |
-| `Insufficient privileges` lors d'un `snow sql` | Le rôle utilisé n'a pas les droits sur l'objet cible | Vérifier les GRANTs du rôle avec `SHOW GRANTS TO ROLE <role>` |
-| `Connection refused` / timeout | Mauvais `account` dans config.toml | Vérifier l'Account locator dans l'UI Snowflake |
-| `JWT token is invalid` | Clé privée ne correspond pas à la clé publique dans Snowflake | Regénérer la paire de clés et réassigner la clé publique |
-| `Private key file not found` | Chemin de la clé privée incorrect dans config.toml | Vérifier le chemin avec `ls <chemin>` |
+| `File './config.toml' does not exist` | Le fichier config.toml n'a pas encore été créé | `touch config.toml` puis relancer |
+| `No such option: -c` | Une option de commande est incorrecte ou mal orthographiée | Vérifier la syntaxe : `snow --help` ou `snow connection add --help` |
+| `250001 (08001): Role 'X' is not granted to this user` | Le rôle mis dans config.toml n'est pas assigné à deployment_user dans Snowflake | Exécuter dans l'UI : `GRANT ROLE <role> TO USER deployment_user;` |
+| `Bad owner or permissions on config.toml` | config.toml est lisible par d'autres utilisateurs (risque sécurité) | `chmod 600 config.toml && chown $USER config.toml` |
+| `002002 (42710): Object 'X' already exists` | L'objet existe déjà dans Snowflake et on a utilisé CREATE sans IF NOT EXISTS | Remplacer par `CREATE OR REPLACE` ou `CREATE IF NOT EXISTS` dans le script SQL |
+| `SQL access control error: Requested role 'X' is not assigned` | deployment_user n'a pas le rôle spécifié avec `--role` | `GRANT ROLE <role> TO USER deployment_user;` dans l'UI Snowflake |
+| `Insufficient privileges` | Le rôle utilisé n'a pas les droits suffisants sur l'objet cible | Vérifier les droits : `SHOW GRANTS TO ROLE <role>;` |
+| `Connection refused` / timeout | Mauvais account locator dans config.toml | Retrouver le bon locator dans l'UI Snowflake → profil → Account details |
+| `JWT token is invalid` ou `JWT expired` | La clé privée ne correspond pas à la clé publique enregistrée dans Snowflake | Regénérer les deux clés et réassigner la clé publique avec `ALTER USER SET RSA_PUBLIC_KEY` |
+| `Private key file not found` | Le chemin vers la clé privée dans config.toml est incorrect | Vérifier avec `ls <chemin_dans_config>` ; utiliser un chemin absolu si nécessaire |
 
-### Arbre de décision pour les erreurs de connexion
+### Arbre de décision : erreurs de connexion
 
 ```mermaid
 flowchart TD
-    ERR([❌ Erreur de connexion snow CLI]) --> Q1{Type d'erreur ?}
+    ERR([❌ Erreur snow connection test]) --> Q1{Quel message ?}
 
-    Q1 -->|"Config file not found"| FIX1["touch config.toml<br/>puis relancer"]
+    Q1 -->|"config.toml not found"| FIX1["touch config.toml<br/>puis relancer snow connection add"]
 
-    Q1 -->|"Role not granted"| Q2{"Le rôle est-il assigné<br/>à deployment_user ?"}
-    Q2 -->|Non| FIX2["GRANT ROLE <r><br/>TO USER deployment_user;"]
-    Q2 -->|Oui| FIX3["Vérifier le nom du rôle<br/>dans config.toml (casse)"]
+    Q1 -->|"Role not granted (250001)"| FIX2["Dans l'UI Snowflake :<br/>GRANT ROLE &lt;role&gt; TO USER deployment_user;"]
 
-    Q1 -->|"JWT invalid"| Q3{"Clé privée correcte ?"}
-    Q3 -->|Non| FIX4["Regénérer paire de clés<br/>+ ALTER USER SET RSA_PUBLIC_KEY"]
-    Q3 -->|Oui| FIX5["Vérifier que la clé publique<br/>est bien SANS les lignes BEGIN/END"]
+    Q1 -->|"JWT invalid / expired"| Q2{"La clé publique dans Snowflake<br/>correspond-elle à la clé privée locale ?"}
+    Q2 -->|Non / Incertain| FIX3["1. Regénérer les deux clés RSA<br/>2. ALTER USER SET RSA_PUBLIC_KEY = '...'"]
+    Q2 -->|Oui| FIX4["Vérifier que private_key_file<br/>dans config.toml pointe vers le bon fichier"]
 
-    Q1 -->|"Permission on config.toml"| FIX6["chmod 600 config.toml"]
+    Q1 -->|"Private key file not found"| FIX5["Vérifier le chemin dans config.toml :<br/>ls &lt;valeur de private_key_file&gt;"]
 
-    Q1 -->|"Connection refused"| FIX7["Vérifier l'account locator<br/>dans l'UI Snowflake"]
+    Q1 -->|"Connection refused / timeout"| FIX6["Vérifier l'account locator dans l'UI Snowflake<br/>Profil → View account details → Account locator"]
+
+    Q1 -->|"Bad permissions warning"| FIX7["chmod 600 config.toml<br/>chown $USER config.toml"]
 
     style ERR fill:#ff7675,color:#fff
     style FIX1 fill:#55efc4,color:#333
     style FIX2 fill:#55efc4,color:#333
-    style FIX3 fill:#fdcb6e,color:#333
-    style FIX4 fill:#55efc4,color:#333
+    style FIX3 fill:#55efc4,color:#333
+    style FIX4 fill:#fdcb6e,color:#333
     style FIX5 fill:#55efc4,color:#333
     style FIX6 fill:#55efc4,color:#333
     style FIX7 fill:#55efc4,color:#333
 ```
 
-### Arbre de décision pour les erreurs SQL
+### Arbre de décision : erreurs lors de snow sql
 
 ```mermaid
 flowchart TD
-    SERR([❌ Erreur lors de snow sql]) --> Q1{Type d'erreur SQL ?}
+    SERR([❌ Erreur lors de snow sql -f fichier.sql]) --> Q1{Quel type d'erreur ?}
 
-    Q1 -->|"Object already exists (42710)"| FIX1["Utiliser CREATE OR REPLACE<br/>ou CREATE IF NOT EXISTS"]
+    Q1 -->|"Object already exists (42710)"| FIX1["Modifier le script SQL :<br/>CREATE → CREATE IF NOT EXISTS<br/>ou CREATE OR REPLACE"]
 
-    Q1 -->|"Insufficient privileges"| Q2{"Quel objet ?"}
-    Q2 -->|DATABASE| FIX2["GRANT USAGE ON DATABASE<br/>TO ROLE <r>"]
-    Q2 -->|SCHEMA| FIX3["GRANT USAGE ON SCHEMA<br/>TO ROLE <r>"]
-    Q2 -->|TABLE| FIX4["GRANT SELECT/INSERT ON TABLE<br/>TO ROLE <r>"]
-    Q2 -->|ACCOUNT-level| FIX5["Depuis ACCOUNTADMIN :<br/>GRANT CREATE <OBJECT> ON ACCOUNT"]
+    Q1 -->|"Insufficient privileges"| Q2{"Sur quel niveau ?"}
+    Q2 -->|DATABASE| FIX2["GRANT USAGE ON DATABASE &lt;db&gt; TO ROLE &lt;role&gt;"]
+    Q2 -->|SCHEMA| FIX3["GRANT USAGE ON SCHEMA &lt;s&gt; TO ROLE &lt;role&gt;"]
+    Q2 -->|TABLE| FIX4["GRANT SELECT/INSERT ON TABLE &lt;t&gt; TO ROLE &lt;role&gt;"]
+    Q2 -->|Niveau compte| FIX5["Depuis ACCOUNTADMIN :<br/>GRANT CREATE &lt;OBJECT&gt; ON ACCOUNT TO ROLE &lt;role&gt;"]
 
-    Q1 -->|"Role not assigned"| FIX6["GRANT ROLE <r><br/>TO USER deployment_user;"]
+    Q1 -->|"Role not assigned"| FIX6["GRANT ROLE &lt;role&gt; TO USER deployment_user;"]
 
-    Q1 -->|"Object does not exist"| FIX7["Vérifier USE DATABASE / SCHEMA<br/>ou passer --database dans snow sql"]
+    Q1 -->|"Object does not exist"| FIX7["Vérifier --database dans la commande snow sql<br/>ou ajouter USE DATABASE au début du script SQL"]
 
     style SERR fill:#ff7675,color:#fff
 ```
 
-### Commandes de diagnostic utiles
+### Commandes de diagnostic
 
 ```bash
-# Vérifier la connexion et le rôle actif
+# ── Vérifier que la connexion fonctionne ──────────────────────
+# Affiche le statut, l'utilisateur connecté, le rôle actif, etc.
 snow --config-file ./config.toml connection test
 
-# Lister toutes les connexions configurées
+# ── Vérifier le rôle et l'utilisateur actifs ──────────────────
+# Exécute deux fonctions SQL :
+#   CURRENT_ROLE()  → affiche le rôle actif dans cette connexion
+#   CURRENT_USER()  → affiche l'utilisateur connecté
+# Utile pour confirmer qu'on est connecté avec les bons identifiants
+snow --config-file ./config.toml sql \
+  -q "SELECT CURRENT_ROLE(), CURRENT_USER()"
+
+# ── Lister toutes les connexions configurées ──────────────────
+# Affiche le nom et les paramètres de chaque connexion dans config.toml
+# (sans afficher les secrets comme la clé privée)
 snow connection list
 
-# Afficher la config actuelle
-cat config.toml
+# ── Vérifier les droits d'un rôle ─────────────────────────────
+# "SHOW GRANTS TO ROLE" liste tous les privilèges assignés à ce rôle
+# Permet de voir exactement quels objets ce rôle peut accéder
+snow --config-file ./config.toml sql \
+  -q "SHOW GRANTS TO ROLE dev_sec_ops_role"
 
-# Tester une query simple pour vérifier les droits
-snow --config-file ./config.toml sql -q "SELECT CURRENT_ROLE(), CURRENT_USER()"
-
-# Vérifier les droits d'un rôle
-snow --config-file ./config.toml sql -q "SHOW GRANTS TO ROLE dev_sec_ops_role"
+# ── Supprimer une connexion et la reconfigurer ─────────────────
+# Utile si on veut tout recommencer proprement
+# "remove default" = supprimer la connexion nommée "default"
+snow connection remove default
+# Puis relancer : snow --config-file ./config.toml connection add ...
 ```
 
 ---
@@ -1103,39 +1532,20 @@ snow --config-file ./config.toml sql -q "SHOW GRANTS TO ROLE dev_sec_ops_role"
 
 ```mermaid
 flowchart TD
-    S1["✅ 1. Python et pip installés"] --> S2["✅ 2. snowflake-cli installé<br/>pip install snowflake-cli"]
-    S2 --> S3["✅ 3. Paire de clés RSA générée<br/>openssl genrsa 2048 | openssl pkcs8..."]
-    S3 --> S4["✅ 4. Utilisateur SERVICE créé dans Snowflake<br/>CREATE OR REPLACE USER ... TYPE=SERVICE"]
-    S4 --> S5["✅ 5. Clé publique assignée à l'utilisateur<br/>ALTER USER ... SET RSA_PUBLIC_KEY = '...'"]
-    S5 --> S6["✅ 6. Rôle créé et assigné à l'utilisateur<br/>GRANT ROLE ... TO USER deployment_user"]
-    S6 --> S7["✅ 7. config.toml créé<br/>snow connection add --no-interactive..."]
-    S7 --> S8["✅ 8. Rôle ajouté dans config.toml<br/>role = 'dev_sec_ops_role'"]
-    S8 --> S9["✅ 9. Connexion testée<br/>snow connection test → Status: OK"]
-    S9 --> S10["✅ 10. Permissions config.toml fixées<br/>chmod 600 config.toml"]
-    S10 --> S11["✅ 11. Scripts SQL écrits et testés<br/>Utiliser CREATE OR REPLACE / IF NOT EXISTS"]
-    S11 --> S12["🚀 12. Déploiement !<br/>snow --config-file ./config.toml sql -f fichier.sql"]
+    S1["✅ 1. Python 3.8+ installé<br/>python3 --version"] --> S2
+    S2["✅ 2. snowflake-cli installé<br/>pip install snowflake-cli"] --> S3
+    S3["✅ 3. Paire de clés RSA générée<br/>openssl genrsa 2048 | openssl pkcs8..."] --> S4
+    S4["✅ 4. Utilisateur SERVICE créé dans Snowflake<br/>CREATE OR REPLACE USER ... TYPE=SERVICE"] --> S5
+    S5["✅ 5. Clé publique assignée à l'utilisateur<br/>ALTER USER ... SET RSA_PUBLIC_KEY = '...'"] --> S6
+    S6["✅ 6. Rôle créé et assigné à l'utilisateur<br/>GRANT ROLE ... TO USER deployment_user"] --> S7
+    S7["✅ 7. config.toml créé et connexion configurée<br/>touch config.toml + snow connection add ..."] --> S8
+    S8["✅ 8. Rôle par défaut ajouté dans config.toml<br/>role = 'dev_sec_ops_role'"] --> S9
+    S9["✅ 9. Permissions config.toml fixées<br/>chmod 600 config.toml"] --> S10
+    S10["✅ 10. Connexion testée avec succès<br/>snow connection test → Status: OK"] --> S11
+    S11["✅ 11. Scripts SQL idempotents écrits<br/>CREATE OR REPLACE / IF NOT EXISTS partout"] --> S12
+    S12["🚀 12. Déploiement lancé !<br/>snow --config-file ./config.toml sql -f fichier.sql"]
 
     style S12 fill:#00b894,color:#fff
-```
-
-### Checklist avant chaque déploiement
-
-```bash
-# CHECKLIST À FAIRE AVANT CHAQUE DÉPLOIEMENT
-
-# 1. Vérifier que la connexion fonctionne
-snow --config-file ./config.toml connection test
-
-# 2. Vérifier que le bon rôle est actif (colonne "Role" dans le résultat)
-snow --config-file ./config.toml sql -q "SELECT CURRENT_ROLE()"
-
-# 3. Vérifier que la database cible existe
-snow --config-file ./config.toml sql -q "SHOW DATABASES LIKE 'HEALTH_APP_2'"
-
-# 4. Pour chaque script :
-#    → Le script utilise-t-il CREATE OR REPLACE / IF NOT EXISTS ? (idempotence)
-#    → Le bon rôle est-il spécifié dans la commande snow sql ?
-#    → La bonne database est-elle spécifiée si nécessaire ?
 ```
 
 ---
@@ -1144,51 +1554,54 @@ snow --config-file ./config.toml sql -q "SHOW DATABASES LIKE 'HEALTH_APP_2'"
 
 ### Commandes principales
 
-| Commande | Description | Exemple |
+| Commande | Ce qu'elle fait | Exemple |
 |---|---|---|
-| `snow --version` | Afficher la version installée | `snow --version` |
-| `snow --help` | Aide générale | `snow --help` |
-| `snow connection add` | Ajouter une connexion | `snow connection add --no-interactive ...` |
-| `snow connection list` | Lister les connexions | `snow connection list` |
-| `snow connection test` | Tester la connexion par défaut | `snow connection test` |
-| `snow connection remove <name>` | Supprimer une connexion | `snow connection remove default` |
-| `snow sql -f <file>` | Exécuter un fichier SQL | `snow sql -f mon_script.sql` |
-| `snow sql -q "<query>"` | Exécuter une query SQL inline | `snow sql -q "SELECT CURRENT_USER()"` |
+| `snow --version` | Afficher la version de Snowflake CLI installée | `snow --version` |
+| `snow --help` | Afficher toutes les commandes disponibles avec leur description | `snow --help` |
+| `snow connection add` | Ajouter une connexion à Snowflake (interactive ou non) | `snow connection add` |
+| `snow connection list` | Lister toutes les connexions configurées | `snow connection list` |
+| `snow connection test` | Tester que la connexion fonctionne et afficher les infos | `snow connection test` |
+| `snow connection remove <n>` | Supprimer une connexion | `snow connection remove default` |
+| `snow sql -f <fichier>` | Exécuter tout le contenu d'un fichier SQL | `snow sql -f mon_script.sql` |
+| `snow sql -q "<query>"` | Exécuter une requête SQL directement en ligne de commande | `snow sql -q "SELECT CURRENT_USER()"` |
 
-### Options globales réutilisables
+### Options réutilisables dans toutes les commandes
 
-| Option | Abréviation | Description |
+| Option | Rôle | Exemple d'utilisation |
 |---|---|---|
-| `--config-file <path>` | — | Utiliser un fichier config.toml spécifique (et non ~/.snowflake/) |
-| `--connection <name>` | `-c` | Utiliser une connexion nommée spécifique |
-| `--role <role>` | — | Surcharger le rôle de la connexion pour cette commande |
-| `--database <db>` | — | Surcharger la database de la connexion |
-| `--schema <schema>` | — | Surcharger le schéma de la connexion |
-| `--warehouse <wh>` | — | Surcharger le warehouse de la connexion |
+| `--config-file <chemin>` | Préciser quel fichier config.toml utiliser (si pas le global) | `--config-file ./config.toml` |
+| `--connection <nom>` | Utiliser une connexion nommée spécifique (ex: "prod") | `--connection prod` |
+| `--role <rôle>` | Utiliser un rôle différent de celui du config.toml pour cette commande | `--role devops_role` |
+| `--database <db>` | Utiliser une database différente pour cette commande | `--database health_app_2` |
+| `--schema <schema>` | Utiliser un schéma différent pour cette commande | `--schema raw` |
+| `--warehouse <wh>` | Utiliser un warehouse différent pour cette commande | `--warehouse compute_wh` |
 
-### Exemples de commandes avancées
+### Exemples de commandes complètes
 
 ```bash
-# Exécuter en spécifiant rôle ET database (override config.toml)
+# ── Déployer un fichier SQL avec le rôle et la database par défaut ──
+snow --config-file ./config.toml sql -f sql/rbac/init.sql
+
+# ── Déployer un fichier avec un rôle et une database spécifiques ───
+# Utiliser devops_role (différent du rôle par défaut) dans la database health_app_2
 snow --config-file ./config.toml sql \
   --role devops_role \
   --database health_app_2 \
   -f sql/ddl/file_format.sql
 
-# Query inline avec override de rôle
+# ── Exécuter une requête SQL rapide pour tester ─────────────────────
+# Afficher le rôle et l'utilisateur actuellement actifs dans la connexion
+snow --config-file ./config.toml sql -q "SELECT CURRENT_ROLE(), CURRENT_USER()"
+
+# ── Supprimer un objet avec une query inline ────────────────────────
 snow --config-file ./config.toml sql \
   --role devops_role \
   --database health_app_2 \
   -q "drop file format raw.csv_file"
 
-# Lister les connexions disponibles
-snow connection list
-
-# Supprimer une connexion (pour reconfigurer proprement)
-snow connection remove default
-
-# Tester une connexion spécifique (non-default)
-snow --connection prod connection test
+# ── Utiliser une connexion spécifique (ex: "prod") ──────────────────
+# Utile quand on a plusieurs environnements configurés dans config.toml
+snow --connection prod sql -f sql/ddl/file_format.sql
 ```
 
 ---
@@ -1199,7 +1612,6 @@ snow --connection prod connection test
 - [Documentation CREATE USER](https://docs.snowflake.com/fr/sql-reference/sql/create-user)
 - [Documentation ALTER USER](https://docs.snowflake.com/fr/sql-reference/sql/alter-user)
 - [Authentification par paire de clés RSA](https://docs.snowflake.com/en/user-guide/key-pair-auth)
-- [Référence des types d'utilisateurs Snowflake](https://docs.snowflake.com/fr/user-guide/admin-user-management)
 
 ---
 
@@ -1238,10 +1650,10 @@ mindmap
 **Les 5 points essentiels à retenir** :
 
 1. **Toujours utiliser `TYPE=SERVICE`** pour les utilisateurs de pipeline — jamais un compte personnel
-2. **L'authentification JWT par clé RSA** est plus sécurisée qu'un mot de passe pour le CI/CD
-3. **`snow sql -f`** pour exécuter un fichier SQL, **`snow sql -q`** pour une query inline
-4. **`--role` et `--database`** permettent de surcharger les paramètres de config.toml pour chaque commande
-5. **Écrire des scripts idempotents** (`CREATE OR REPLACE`, `IF NOT EXISTS`) pour éviter les erreurs lors des ré-exécutions
+2. **L'authentification JWT par clé RSA** = la clé privée reste sur votre machine, la clé publique est dans Snowflake. Seul quelqu'un avec la clé privée peut se connecter.
+3. **`snow sql -f`** pour exécuter un fichier SQL complet, **`snow sql -q`** pour une requête rapide en ligne de commande
+4. **`--role` et `--database`** permettent de changer le contexte d'exécution pour une commande spécifique, sans modifier config.toml
+5. **Toujours écrire des scripts idempotents** avec `CREATE OR REPLACE` ou `IF NOT EXISTS` : un script qu'on peut rejouer 10 fois sans erreur ni effet indésirable
 
 ---
 
