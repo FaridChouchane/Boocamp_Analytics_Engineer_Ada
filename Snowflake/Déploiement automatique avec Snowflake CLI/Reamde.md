@@ -459,7 +459,10 @@ DESC USER deployment_user;
 
 ## 5. Configurer Snowflake CLI
 
+*❄️ Documentation de la configuration de Snowflake CLI > https://docs.snowflake.com/en/developer-guide/snowflake-cli/connecting/configure-cli*
+
 ### Vue d'ensemble de la configuration
+
 
 Snowflake CLI utilise un fichier de configuration `config.toml`.
 Le format TOML (Tom's Obvious Minimal Language) est un format de fichier de configuration lisible par les humains, organisé en sections entre crochets `[section]`.
