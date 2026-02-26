@@ -1,4 +1,4 @@
-# Chapitre 4 — Gérer les accès à Snowflake : le modèle RBAC
+# ❄️ Chapitre 4 — Gérer les accès à Snowflake : le modèle RBAC
 
 > **Niveau** : Débutant → Intermédiaire  
 > **Durée estimée** : 2-3h  
