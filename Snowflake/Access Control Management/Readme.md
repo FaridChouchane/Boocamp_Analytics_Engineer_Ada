@@ -260,6 +260,8 @@ GRANT CREATE WAREHOUSE ON ACCOUNT TO ROLE dev_sec_ops_role;
 GRANT EXECUTE TASK ON ACCOUNT TO ROLE dev_sec_ops_role WITH GRANT OPTION;
 ```
 
+* La commande **GRANT PRIVILEGE** dans ❄️ Snowflake : https://docs.snowflake.com/fr/sql-reference/sql/grant-privilege
+
 ### Test : créer une database avec le nouveau rôle
 
 ```sql
